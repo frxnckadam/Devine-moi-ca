@@ -1663,7 +1663,10 @@ function showGame2() {
 
 // ----- Démarrage -----
 $("m2Start").onclick = () => {
-  if (LB.room) { if (LB.role === "host") g2HostStart(); return; }
+  if (LB.room) {
+    if (LB.role === "host") g2HostStart();
+    return;
+  }
   const en = LANG === "en";
   const n1 = $("m2n1").value.trim().slice(0, 20) || (en ? "Player 1" : "Joueur 1");
   const n2 = $("m2n2").value.trim().slice(0, 20) || (en ? "Player 2" : "Joueur 2");
@@ -1674,15 +1677,15 @@ $("m2Start").onclick = () => {
 };
 function g2HostStart() {
   const names = LB.players.map(p => p.name);
-  if (names.length < 2) return;
+  if (names.length < 2) { toast(t2("En attente de ton ami…", "Waiting for your friend…")); return; }
   const st = {theme: C2.theme, time: C2.time, orient: C2.orient, names, ids: LB.players.map(p => p.id)};
   try { LB.room.emit("lobby", {k: "start2", settings: st}); } catch (e) {}
   G2 = makeG2(names, st, true, 0);
-  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, false); } });
+  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, "theme"); } });
 }
 function g2GuestStart(st) {
   G2 = makeG2(st.names, st, true, Math.max(1, st.ids.indexOf(LB.myId)));
-  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, false); } });
+  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, "theme"); } });
 }
 
 // ----- Local : passage du téléphone entre les deux joueurs -----
@@ -1746,8 +1749,8 @@ function beginStep2(t, intro) {
   G2.turn = t; G2.myFin = false; G2.finSet = G2.names.map(() => false); G2.live = {};
   if (intro) {
     G2.phase = "intro";
-    showIntro2(t);
-    G2.introT = setTimeout(() => { if (G2 && G2.phase === "intro" && G2.turn === t) startDraw2(); }, 2200);
+    if (intro === "theme") showTheme2(); else showIntro2(t);
+    G2.introT = setTimeout(() => { if (G2 && G2.phase === "intro" && G2.turn === t) startDraw2(); }, intro === "theme" ? 2600 : 2200);
   } else startDraw2();
   renderAll2();
 }
@@ -1757,6 +1760,16 @@ function startDraw2() {
   SFX.start();
   startTimer(G2.time, endTurn2);
   renderAll2();
+}
+// Thème affiché en plein écran sur les deux téléphones, avant le premier dessin.
+function showTheme2() {
+  const ov = $("overlay"), name = catLabel(G2.theme).toUpperCase();
+  ov.replaceChildren(); ov.className = "inv";
+  ov.append(menuBar2(),
+    el("div", {class: "ov-top"},
+      el("div", {class: "kicker rise"}, t2("Thème", "Theme")),
+      el("div", {class: "ov-big", style: `font-size:${Math.min(15, 110 / Math.max(4, name.length))}vw;overflow-wrap:anywhere`}, name),
+      el("p", {class: "ov-sub rise d2"}, t2("Vous dessinez tous en même temps.", "Everyone draws at the same time."))));
 }
 function showIntro2(t) {
   const ov = $("overlay");
