@@ -226,6 +226,7 @@ button:disabled{opacity:.35;cursor:default}
 
 /* Jeu numéro 2 */
 #menu2{height:100%;max-width:560px;margin:0 auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5);overflow-y:auto}
+#menu2 #m2Start{position:sticky;bottom:0;z-index:2;margin-top:auto;flex:none}
 #game2{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
 #info2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
 .t2Theme{font-size:18px;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
@@ -1646,6 +1647,7 @@ function buildMenu2() {
 }
 $("m2More").onclick = () => showThemes2(true);
 $("themes2Back").onclick = () => showThemes2(false);
+$("menu2Btn").onclick = goMenu2;
 $("back2h").onclick = () => {
   if (LB.room) { lbLeave(); $("menu2").classList.add("hidden"); gateOpen(); }
   else goHome();
