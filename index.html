@@ -141,7 +141,7 @@ button:disabled{opacity:.35;cursor:default}
 .scIco svg.i,.scCup svg.i{width:12px;height:12px}
 .scNum{font-size:24px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
 #timer{font-weight:700;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;padding:0 0 0 var(--s2);border-left:1px solid currentColor}
-#timer.urgent{background:var(--ink);color:var(--bg)}
+#timer.urgent{background:var(--ink);color:var(--bg);text-align:center;padding:0 var(--s2);border-left:0}
 #panel{flex:none;height:176px;padding:var(--s3) var(--s3) var(--s2);display:flex;flex-direction:column;gap:var(--s2);overflow:hidden}
 .wordline{display:flex;align-items:center;gap:var(--s2)}
 .wordline .word{font-size:24px;font-weight:700;letter-spacing:-.02em}
@@ -2246,7 +2246,7 @@ function netApply(s) {
   if (!G) return;
   const prev = G.phase, prevRound = G.round;
   Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, word: s.word, options: s.options || [], result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || []});
-  if (s.phase === "handover") { strokes = []; cur = null; netLive = {}; }
+  if (s.phase === "handover" || s.phase === "choose") { strokes = []; cur = null; netLive = {}; redraw(); }
   if (s.phase !== prev) {
     if (s.phase === "guess") { G.msg = null; G.hint = null; G.hintShown = false; }
     netSfx(s.phase, s.result);
