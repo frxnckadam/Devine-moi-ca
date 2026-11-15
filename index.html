@@ -1,0 +1,2285 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Devine-moi ça</title>
+<style>
+/* Échelle d'espacement unique : 4 / 8 / 16 / 24 px */
+:root{
+  --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:56px;
+  --bg:#ffe500; --ink:#111111;
+  --paper:#ffffff;
+  --f:Helvetica,"Helvetica Neue",Arial,sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:17px/1.4 var(--f);transition:background-color .3s var(--ease),color .3s var(--ease)}
+body{overflow:hidden;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:active{opacity:.6}
+button:disabled{opacity:.35;cursor:default}
+.hidden{display:none!important}
+.kicker{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em}
+.note{font-size:14px}
+.note b{font-weight:800}
+.h2{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.inv{background:var(--ink);color:var(--bg)}
+
+/* Animations de texte et d'icônes (pas de transition entre les écrans) */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes grow{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes pop{0%{opacity:0;transform:scale(.4)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+@keyframes stamp{0%{transform:scale(1.6);opacity:0}60%{transform:scale(.96);opacity:1}100%{transform:scale(1)}}
+.rise{animation:rise .4s var(--ease) backwards}
+.rise.d1{animation-delay:.08s}
+.rise.d2{animation-delay:.16s}
+.rise.d3{animation-delay:.24s}
+.pop{animation:pop .5s var(--ease) both}
+.stamp{animation:stamp .45s var(--ease) both}
+.poster h1 span{display:inline-block;white-space:nowrap}
+.poster h1 .w1{animation:rise .5s var(--ease) both}
+.poster h1 .w2{animation:rise .5s .1s var(--ease) both}
+
+/* Écran de lancement : titre qui se lève lettre par lettre */
+#splash{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:center;gap:var(--s4);padding:0 var(--s3);color:#111111;overflow:hidden;background:#fbfaf4}
+#splash.hidden{display:none}
+.spT{margin:0;font-size:clamp(48px,16vw,104px);font-weight:800;letter-spacing:-.05em;line-height:.9;align-self:flex-start}
+.spT .ln{display:flex;align-items:center;white-space:nowrap}
+.lt{display:inline-block}
+.lt>span{display:inline-block;animation:letterIn .9s var(--ease) both}
+@keyframes letterIn{0%{opacity:0;transform:translateY(.3em) scale(1.3);filter:blur(10px);color:var(--c)}35%{opacity:1;transform:none;filter:blur(0);color:var(--c)}60%{color:#111111}100%{color:#111111}}
+.spA{display:inline-block;animation:stamp .6s .95s var(--ease) both}
+.spArr{position:relative;display:block;flex:1 1 0;min-width:2.2em;height:.62em;margin-left:.2em;color:inherit;transition:color .4s var(--ease)}
+.spArr.go{color:#2f5bff;animation:arrowOut .6s var(--ease) forwards}
+.spArr svg{position:absolute;left:0;top:0;display:block;width:100%;height:100%;overflow:visible;animation:none}
+#spPath{stroke-dasharray:1;stroke-dashoffset:1;animation:penDraw 1.4s 1.3s var(--ease) forwards}
+
+@keyframes shaftDraw{from{transform:scaleX(0);filter:blur(6px);opacity:0}to{transform:none;filter:none;opacity:1}}
+@keyframes blurIn{from{filter:blur(8px);opacity:0}to{filter:blur(0);opacity:1}}
+@keyframes penDraw{from{filter:blur(3px)}to{stroke-dashoffset:0;filter:blur(0)}}
+@keyframes wipeUp{from{clip-path:inset(0 0 0 0)}to{clip-path:inset(0 0 100% 0)}}
+@keyframes arrowIn{from{opacity:0;transform:translateX(-40%)}to{opacity:1;transform:none}}
+@keyframes arrowOut{from{transform:none}to{transform:translateX(110vw)}}
+.spCount{position:absolute;right:var(--s3);bottom:var(--s3);font-size:clamp(72px,24vw,150px);font-weight:800;letter-spacing:-.06em;line-height:.8;font-variant-numeric:tabular-nums;color:#cfcfcf}
+.spCount small{font-size:.28em;letter-spacing:0;vertical-align:top;margin-left:.08em}
+
+/* Accueil : grille de jeux */
+#home{height:100vh;height:100dvh;display:flex;flex-direction:column;box-sizing:border-box;padding:var(--s4) var(--s3)}
+.homeTop{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s2);margin-bottom:var(--s4)}
+.homeName{margin:0;font-size:clamp(30px,10vw,48px);font-weight:800;letter-spacing:-.04em;line-height:1;white-space:nowrap}
+.lang{display:flex;gap:var(--s1);flex:none}
+.lg{font:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;padding:var(--s1) var(--s2);border:1px solid var(--ink);background:transparent;color:inherit;border-radius:0;cursor:pointer}
+.lg.on{background:var(--ink);color:var(--bg)}
+.homeDots{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 var(--s4)}
+.homeDots .bgdot{width:22px;height:22px}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:1px;background:var(--ink);border:1px solid var(--ink)}
+.tile{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--s2);padding:var(--s3);border:0;background:var(--bg);color:var(--ink);font:inherit;text-align:center;border-radius:0}
+.tile .ic{display:block;width:46%}
+.tile svg.i{width:36px;height:36px}
+.tile .ic svg.i{width:100%;height:auto}
+.tile.main{cursor:pointer}
+#gate{position:fixed;inset:0;z-index:5;background:var(--bg);color:var(--ink);padding:var(--s4);max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s4);overflow-y:auto}
+#gate.hidden{display:none}
+.gateMenu{flex:1;display:flex;flex-direction:column;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+.gateBtn{flex:1;display:flex;align-items:center;gap:var(--s3);border:0;border-bottom:2px solid var(--ink);background:transparent;color:var(--ink);font:inherit;font-size:22px;font-weight:700;letter-spacing:-.02em;padding:var(--s3);text-align:left;border-radius:0}
+.gateBtn:last-child{border-bottom:0}
+.gateBtn svg{width:28px;height:28px;flex:none}
+.gateBtn:active{background:var(--ink);color:var(--bg)}
+.bigCode{font-size:clamp(56px,18vw,112px);font-weight:800;letter-spacing:.08em;line-height:1;text-align:center;padding:var(--s3) 0}
+.ctaBig{width:100%;margin-top:auto;padding:var(--s3) var(--s4);font-size:24px;font-weight:700;letter-spacing:-.02em;display:flex;justify-content:space-between;align-items:center}
+.cdOv{position:fixed;inset:0;z-index:95;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:clamp(56px,26vw,160px);font-weight:800;letter-spacing:-.05em;text-align:center;padding:var(--s4)}
+.cdPop{animation:cdIn .7s cubic-bezier(.2,.8,.2,1)}
+@keyframes cdIn{from{transform:scale(1.5);opacity:0}to{transform:none;opacity:1}}
+.txFly{position:fixed;z-index:90;pointer-events:none;overflow:hidden}
+.tile .tn{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+
+/* Menu */
+#menu{height:100%;max-width:560px;margin:0 auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5);overflow-y:auto}
+.menuTop{margin-bottom:calc(var(--s2) * -1)}
+.poster h1{font-size:clamp(44px,13vw,80px);font-weight:800;line-height:.86;letter-spacing:-.05em;margin:var(--s2) 0 0}
+.poster h1 span{background:var(--ink);color:var(--bg);padding:0 .08em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.sec{display:flex;flex-direction:column;gap:var(--s2)}
+.cats{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.crow{width:100%;display:flex;align-items:baseline;gap:var(--s2);padding:var(--s2) var(--s1);border-bottom:1px solid var(--ink);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.crow .num{font-size:12px;font-weight:700;width:22px;flex:none}
+.crow.on{background:var(--ink);color:var(--bg)}
+.crow.sub{font-size:16px;font-weight:500;padding:var(--s1);opacity:.7;border-bottom:0;align-items:center}
+.crow.sub .num{display:flex;align-items:center;justify-content:center}
+.rowIn{align-items:center}
+.rin{width:2.4em;font:inherit;font-weight:700;letter-spacing:-.03em;background:transparent;color:inherit;border:0;border-bottom:2px solid currentColor;outline:none;text-align:center;padding:0;border-radius:0}
+.field{border:0;border-bottom:2px solid var(--ink);background:transparent;font-size:30px;letter-spacing:-.03em;font-weight:700;padding:var(--s1) 0;outline:none;width:100%;border-radius:0}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.names label{display:flex;flex-direction:column;gap:var(--s1)}
+.swatches-bg{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
+.bgdot{width:32px;height:32px;border-radius:50%;border:1px solid var(--ink);padding:0}
+.bgdot.on{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--ink)}
+.soundBox{display:flex;align-items:center;justify-content:space-between;border:2px solid var(--ink);padding:var(--s2) var(--s3)}
+.soundBox .lbl{font-size:30px;font-weight:700;letter-spacing:-.03em}
+.soundBox .opts{display:flex;gap:var(--s1)}
+.soundBox .opt{width:48px;height:48px;border:1px solid var(--ink);display:grid;place-items:center}
+.soundBox .opt.on{background:var(--ink);color:var(--bg)}
+#start,#m2Start,#dl2{margin-top:auto;width:100%;padding:var(--s3) var(--s4);font-size:24px;font-weight:700;letter-spacing:-.02em;display:flex;justify-content:space-between;align-items:center}
+#menuErr{font-size:14px;font-weight:700;min-height:20px}
+#resume{width:100%;padding:var(--s3) var(--s4);font-size:20px;font-weight:700;display:flex;justify-content:space-between;align-items:center;border:2px solid var(--ink)}
+.moreBar{width:100%;display:flex;justify-content:space-between;align-items:center;border:2px solid var(--ink);padding:var(--s3);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.moreBar svg.i{width:24px;height:24px}
+.pill{font-size:14px;font-weight:700;border:1px solid var(--ink);padding:var(--s1) var(--s2)}
+
+/* Plus de thèmes */
+#themes,#themes2{position:fixed;inset:0;z-index:6;background:var(--bg);color:var(--ink);padding:var(--s4);max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s4);overflow-y:auto}
+#themes .themesTop,#themes2 .themesTop{display:flex}
+
+/* Jeu */
+#game{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.top{flex:none;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-bottom:1px solid var(--ink)}
+#menuBtn svg.i{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+#info{display:flex;gap:var(--s3);align-items:stretch;justify-content:center;font-weight:700;text-align:left}
+.sc{display:flex;flex-direction:column;gap:2px;min-width:80px}
+.scName{font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.scIco svg.i,.scCup svg.i{width:12px;height:12px}
+.scNum{font-size:24px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+#timer{font-weight:700;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;padding:0 0 0 var(--s2);border-left:1px solid currentColor}
+#timer.urgent{background:var(--ink);color:var(--bg)}
+#panel{flex:none;height:176px;padding:var(--s3) var(--s3) var(--s2);display:flex;flex-direction:column;gap:var(--s2);overflow:hidden}
+.wordline{display:flex;align-items:center;gap:var(--s2)}
+.wordline .word{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.finish{margin-left:auto;font-weight:700;font-size:15px;padding:var(--s2) var(--s3);display:flex;align-items:center;gap:var(--s2);line-height:1}
+.finish svg.i{width:18px;height:18px}
+.tools{display:flex;justify-content:space-between;align-items:center;gap:var(--s2)}
+.palette{display:flex;gap:var(--s2);align-items:center}
+.palette .sw{width:26px;height:26px}
+.sw{width:20px;height:20px;border-radius:50%;border:1px solid var(--ink);padding:0;flex:none}
+.sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--ink)}
+.colorDot{display:block;width:14px;height:14px;border-radius:50%;border:1px solid var(--ink)}
+.colorBtn{display:flex;align-items:center;gap:3px;height:36px;padding:0 6px;border:1px solid var(--ink);flex:none}
+.colorBtn.on{background:var(--ink);color:var(--bg)}
+.colorBtn .chev svg.i{width:14px;height:14px}
+.btns{display:flex;gap:var(--s1);flex:none}
+.ico{width:36px;height:36px;border:1px solid var(--ink);display:grid;place-items:center}
+.ico.on{background:var(--ink);color:var(--bg)}
+.ico{transition:transform .2s var(--ease)}
+.ico:active{transform:scale(.88)}
+.fRow{display:flex;gap:var(--s4);margin-top:var(--s3);justify-content:center}
+.fCell{display:flex;flex-direction:column;gap:var(--s1)}
+.fNum{font-size:72px;font-weight:800;letter-spacing:-.05em;line-height:1}
+.trophy{margin-bottom:var(--s2)}
+.trophy svg.i{width:88px;height:88px;stroke-width:1.2}
+.podiums{display:flex;align-items:flex-end;gap:var(--s2);margin-top:var(--s2)}
+.pillar{display:flex;flex-direction:column;align-items:center;width:112px;gap:var(--s1)}
+.pBar{width:100%;background:var(--bg);color:var(--ink);display:flex;align-items:flex-start;justify-content:center;padding-top:var(--s3)}
+.pNum{font-size:48px;font-weight:800;letter-spacing:-.05em;line-height:1}
+.pName{font-size:18px;font-weight:700;text-align:center}
+.pPts{font-size:14px;font-weight:700;text-align:center}
+.cf{position:fixed;top:-12px;width:8px;height:12px;z-index:60;pointer-events:none;border-radius:2px;animation-name:cfFall;animation-timing-function:ease-in;animation-fill-mode:forwards}
+@keyframes cfFall{to{transform:translate(var(--x),110vh) rotate(720deg)}}
+#sizeBar{display:flex;align-items:center;gap:var(--s2)}
+#sizeBar input{flex:1;accent-color:var(--ink)}
+#sizePreview{width:36px;height:36px;display:grid;place-items:center}
+#sizePreview span{display:block;background:var(--ink);border-radius:50%}
+.patRow{display:flex;align-items:baseline;gap:var(--s2)}
+.pattern{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:0 .8em;font-size:24px;font-weight:700;line-height:1.2}
+.wd{display:inline-flex;gap:.2em}
+.ch{display:inline-block;min-width:.6em;text-align:center}
+.count{font-size:18px;font-weight:700;white-space:nowrap}
+.guessRow{display:flex;align-items:stretch}
+.guessRow input{flex:1;font:inherit;font-size:20px;font-weight:700;padding:var(--s1) 0;border:0;border-bottom:1px solid var(--ink);background:transparent;outline:none;min-width:0;border-radius:0}
+.guessRow button{padding:0 var(--s1) 0 var(--s3);display:flex;align-items:center}
+.guessRow button svg{width:24px;height:24px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:square}
+#feedback{font-size:14px;font-weight:700;min-height:20px}
+.hintLine{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;min-height:27px}
+#stageWrap{flex:1;min-height:0;padding:0 var(--s2) var(--s2);display:flex;justify-content:center;align-items:flex-start}
+#stage{position:relative;background:var(--paper);border:1px solid var(--ink);overflow:hidden;flex:none}
+#cv{display:block;width:100%;height:100%;touch-action:none}
+#notif{position:absolute;top:var(--s2);left:50%;transform:translate(-50%,-220%);background:var(--ink);color:var(--bg);font-weight:700;font-size:14px;padding:var(--s1) var(--s2);display:flex;align-items:center;gap:var(--s1);z-index:5;white-space:nowrap;transition:transform .35s var(--ease)}
+#notif.show{transform:translate(-50%,0)}
+#notif svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:square}
+
+/* Écrans plein écran */
+#overlay{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;background:var(--bg);color:var(--ink)}
+#overlay.inv{background:var(--ink);color:var(--bg)}
+#overlay.fin{justify-content:center;align-items:center;text-align:center;padding:var(--s4)}
+.ov-bar{display:flex;justify-content:flex-end;padding:var(--s3) var(--s3) 0}
+.ov-bar .pill{border-color:currentColor}
+.ov-bar2{justify-content:space-between;align-items:center}
+.ov-count{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.ov-top{flex:1;display:flex;flex-direction:column;justify-content:center;gap:var(--s3);padding:var(--s4);overflow-y:auto}
+.ov-title{font-size:clamp(38px,11vw,60px);line-height:1;font-weight:800;letter-spacing:-.045em;margin:0}
+.ov-sub{font-size:18px;margin:0;line-height:1.4}
+.ov-phone{width:52px;height:52px;border:1px solid currentColor;display:grid;place-items:center}
+.ov-phone svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:square}
+.ov-cta{width:100%;padding:var(--s4);font-weight:700;font-size:20px;display:flex;justify-content:space-between;align-items:center;letter-spacing:-.01em;background:var(--ink);color:var(--bg)}
+#overlay.inv .ov-cta{background:var(--bg);color:var(--ink)}
+.ov-words{display:flex;flex-direction:column;border-top:2px solid currentColor}
+.ov-words button{width:100%;padding:var(--s3) 0;border-bottom:1px solid currentColor;font-size:28px;font-weight:700;letter-spacing:-.03em;display:flex;justify-content:space-between;align-items:center;color:inherit;transition:padding .2s var(--ease),background-color .2s;animation:rise .35s var(--ease) both}
+.ov-words button:nth-child(2){animation-delay:.08s}
+.ov-words button:nth-child(3){animation-delay:.16s}
+.ov-words button:hover{background:currentColor;padding-left:var(--s2);padding-right:var(--s2)}
+.ov-words button:hover span{color:var(--bg)}
+.ov-words button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:square}
+.ov-big{font-size:56px;font-weight:800;letter-spacing:-.045em;line-height:1;animation:stamp .45s var(--ease) both}
+.fin-title{font-size:clamp(64px,20vw,120px);font-weight:800;letter-spacing:-.05em;line-height:.9;animation:grow .5s var(--ease) both}
+.fin-sub{font-size:18px;margin-top:var(--s3);animation:rise .4s .2s var(--ease) both}
+.trophy,.ov-phone{animation:pop .5s var(--ease) both}
+.score-line{display:flex;align-items:center;gap:var(--s2);font-size:18px;font-weight:700}
+
+/* Jeu numéro 2 */
+#menu2{height:100%;max-width:560px;margin:0 auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5);overflow-y:auto}
+#game2{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+#info2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+.t2Theme{font-size:18px;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
+#timer2{font-weight:700;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:88px;text-align:center;padding:var(--s1) var(--s2);display:flex;justify-content:center;align-items:center}
+#timer2.urgent{background:var(--ink);color:var(--bg)}
+#timer2:empty{display:none}
+#panel2{flex:none;height:160px;padding:var(--s3) var(--s3) var(--s2);display:flex;flex-direction:column;gap:var(--s2);overflow:hidden}
+#stageWrap2{flex:1;min-height:0;padding:0 var(--s2) var(--s2);display:flex;justify-content:center;align-items:center}
+#sheet2{display:flex;flex:none;align-items:stretch}
+#sheet2.h{flex-direction:column}
+#sheet2.v{flex-direction:row}
+#names2{display:none}
+#names2.on{display:flex}
+#names2 span{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;font-size:18px;letter-spacing:-.01em;padding:0 4px;overflow:hidden;white-space:nowrap}
+#sheet2.h #names2.on{height:34px}
+#sheet2.h #names2{order:2}
+#sheet2.v #names2.on{flex-direction:column;width:84px;flex:none}
+#sheet2.v #names2 span{font-size:16px;padding:0 6px}
+#stage2{position:relative;background:var(--paper);border:1px solid var(--ink);overflow:hidden;flex:none}
+#cv2{display:block;width:100%;height:100%;touch-action:none}
+#foot2{flex:none;display:flex;justify-content:center;gap:var(--s2);padding:var(--s2) var(--s3) var(--s3)}
+#foot2.hidden{display:none}
+#foot2 .foot2Main{flex:1;display:flex;justify-content:space-between;align-items:center;padding:var(--s3) var(--s4);font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:0}
+#foot2 .foot2Sq{flex:none;width:76px;height:76px;display:flex;align-items:center;justify-content:center;padding:0;margin-top:0}
+#foot2 svg{width:28px;height:28px}
+#stage2.pop{animation:popIn .8s cubic-bezier(.2,.8,.2,1)}
+@keyframes popIn{from{transform:scale(.9) rotate(-.8deg);opacity:0}to{transform:none;opacity:1}}
+
+/* Icônes */
+@keyframes iconIn{from{opacity:0;transform:scale(.5) rotate(-12deg)}to{opacity:1;transform:none}}
+svg{animation:iconIn .5s var(--ease) backwards}
+svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:square;stroke-linejoin:miter}
+
+#toast{position:fixed;left:50%;bottom:var(--s3);transform:translate(-50%,160%);transition:transform .3s var(--ease);background:var(--ink);color:var(--bg);padding:var(--s2) var(--s3);z-index:40;font-weight:700;max-width:90vw;text-align:center}
+#toast.show{transform:translate(-50%,0)}
+.tryList{display:flex;flex-direction:column;gap:2px}
+.tryLine{font-size:18px;font-weight:700;opacity:.8}
+.scName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pName{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <h1 class="spT" id="spT"></h1>
+  <div class="spCount" id="spCount">0<small>%</small></div>
+</div>
+
+<div id="home" class="hidden">
+  <div class="homeTop">
+    <h1 class="homeName">Devine-moi ça</h1>
+    <div class="lang" id="langSw"></div>
+  </div>
+  <div class="homeDots" id="homeDots"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div id="menu" class="hidden">
+  <div class="menuTop"><button class="pill" id="backHome">← Accueil</button></div>
+  <div class="poster">
+    <div class="kicker" id="mKick">Dessine. Devine. Gagne.</div>
+    <h1><span class="w1" id="mw1">Mot</span><br><span class="w2" id="mw2">à dessiner</span></h1>
+  </div>
+
+  <button id="resume" class="hidden"><span id="resumeTxt">Reprendre la partie</span> <span>→</span></button>
+
+  <div class="sec">
+    <div class="h2" id="hCat">Choisis une catégorie</div>
+    <ol class="cats" id="catList"></ol>
+    <button id="moreBtn" class="moreBar"></button>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="hDiff">Niveau</div>
+    <div class="cats" id="diffTabs"></div>
+    <div class="note" id="diffNote"></div>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="hRounds">Manches</div>
+    <div class="cats" id="roundRows"></div>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="hWho">Qui joue</div>
+    <div class="names">
+      <label class="kicker"><span id="lbl1">Dessine d’abord</span><input id="n1" class="field" maxlength="20" value="Joueur 1" autocomplete="off"></label>
+      <label class="kicker"><span id="lbl2">Devine ensuite</span><input id="n2" class="field" maxlength="20" value="Joueur 2" autocomplete="off"></label>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="soundBox" id="soundRows"></div>
+  </div>
+
+  <button id="start" class="inv"><span id="startTxt">Commencer</span> <span>→</span></button>
+  <div id="menuErr"></div>
+</div>
+
+<div id="themes" class="hidden">
+  <div class="themesTop"><button class="pill" id="themesBack">← Retour</button></div>
+  <div class="h2" id="themesH">Tous les thèmes</div>
+  <ol class="cats" id="themeList"></ol>
+</div>
+
+<div id="game" class="hidden">
+  <div class="top">
+    <button class="pill" id="menuBtn">Menu</button>
+    <span id="info"></span>
+    <span id="timer"></span>
+  </div>
+  <div id="panel"></div>
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="notif"></div>
+    </div>
+  </div>
+</div>
+
+<div id="menu2" class="hidden">
+  <div class="menuTop"><button class="pill" id="back2h">← Accueil</button></div>
+  <div class="poster">
+    <div class="kicker" id="m2Kick">Dessine. Devine. Gagne.</div>
+    <h1><span class="w1" id="m2w1">Trait pour</span><br><span class="w2" id="m2w2">trait</span></h1>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="m2Theme">Thème</div>
+    <ol class="cats" id="m2Themes"></ol>
+    <button id="m2More" class="moreBar"></button>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="m2Time">Temps par partie</div>
+    <div class="cats" id="m2Times"></div>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="m2Orient">Découpage</div>
+    <div class="kicker" id="m2Cols">3 colonnes</div>
+    <div class="cats" id="m2Orients"></div>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="m2Who">Qui joue</div>
+    <div class="names">
+      <label class="kicker"><span id="m2l1">Dessine en premier</span><input id="m2n1" class="field" maxlength="20" value="Joueur 1" autocomplete="off"></label>
+      <label class="kicker"><span id="m2l2">Dessine ensuite</span><input id="m2n2" class="field" maxlength="20" value="Joueur 2" autocomplete="off"></label>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="h2" id="m2Color">Couleur du jeu</div>
+    <div class="swatches-bg" id="m2Dots"></div>
+  </div>
+
+  <div class="sec">
+    <div class="soundBox" id="m2Sound"></div>
+  </div>
+
+  <button id="m2Start" class="inv"><span id="m2StartTxt">Commencer</span> <span>→</span></button>
+</div>
+
+<div id="themes2" class="hidden">
+  <div class="themesTop"><button class="pill" id="themes2Back">← Retour</button></div>
+  <div class="h2" id="themes2H">Tous les thèmes</div>
+  <ol class="cats" id="themeList2"></ol>
+</div>
+
+<div id="gate" class="hidden"></div>
+
+<div id="game2" class="hidden">
+  <div class="top">
+    <button class="pill" id="menu2Btn">Menu</button>
+    <div id="info2"></div>
+    <span id="timer2"></span>
+  </div>
+  <div id="panel2"></div>
+  <div id="stageWrap2"><div id="sheet2"><div id="names2"></div><div id="stage2"><canvas id="cv2"></canvas></div></div></div>
+  <div id="foot2" class="hidden"><button class="finish" id="dl2"></button></div>
+</div>
+
+<div id="overlay" class="hidden"></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* ---------- Langue ---------- */
+let LANG = "fr";
+try { const v = localStorage.getItem("dd_lang"); if (v === "en" || v === "fr") LANG = v; } catch (e) {}
+const S = {
+  fr: {
+    kicker: "Dessine. Devine. Gagne.", menu: "Menu", game: "Mot à dessiner", game2: "Trait pour trait",
+    cat: "Choisis une catégorie", level: "Niveau", rounds: "Manches", who: "Qui joue", colorH: "Couleur du jeu",
+    start: "Commencer", resume: "Reprendre la partie", back: "← Accueil", backBtn: "← Retour", themesH: "Tous les thèmes",
+    more: "Plus de thèmes", moreCat: c => `Plus de thèmes · ${c}`,
+    n1: "Dessine d’abord", n2: "Devine ensuite", p1: "Joueur 1", p2: "Joueur 2",
+    sound: "Son", soundOn: "Son activé", soundOff: "Son coupé",
+    rOpt: n => `${n} manches`, custom: "Personnaliser", rWord: "manches",
+    left5: "Il reste 5 secondes",
+    kDraw: "Dessin", kGuess: "Devinette",
+    pass: who => `Le téléphone passe à ${who}.`,
+    passGuess: "Tu l’as bien en main ? Le dessin va apparaître.",
+    passDraw: "Tu vois ton mot : garde-le pour toi, ne le montre pas à l’autre.",
+    ctaGuess: "Oui, c’est bon, on joue", ctaDraw: "J’ai le téléphone en main",
+    choose: who => `${who}, choisis ton mot`,
+    end: "Fini !", endSub: "Le temps de dessin est écoulé.",
+    finKick: n => `Partie terminée · ${n} manches`, tie: "Égalité !", wins: n => `${n} gagne !`, newGame: "Nouvelle partie",
+    found: who => `${who} a trouvé`, timeout: "Temps écoulé", next: "Manche suivante",
+    yourWord: "Ton mot", finish: "J’ai fini", finishTitle: "Fin du dessin", colour: "Couleur", pen: "Crayon", eraser: "Gomme", undo: "Retour arrière",
+    eraserSize: "Taille de la gomme", penSize: "Épaisseur du trait",
+    guessPh: "Ta proposition", close: "T’y es presque !", wrong: "Ce n’est pas ça.",
+    hintCat: c => `Indice : catégorie « ${c} »`, hintStart: l => `Indice : commence par « ${l} »`,
+    point: "point", points: "points", dec: ",",
+    timeUnit: " s",
+    random: "Au hasard"
+  },
+  en: {
+    kicker: "Draw. Guess. Win.", menu: "Menu", game: "Word to Draw", game2: "Line by Line",
+    cat: "Choose a category", level: "Level", rounds: "Rounds", who: "Who’s playing", colorH: "Game colour",
+    start: "Start", resume: "Resume game", back: "← Home", backBtn: "← Back", themesH: "All themes",
+    more: "More themes", moreCat: c => `More themes · ${c}`,
+    n1: "Draws first", n2: "Guesses next", p1: "Player 1", p2: "Player 2",
+    sound: "Sound", soundOn: "Sound on", soundOff: "Sound off",
+    rOpt: n => `${n} rounds`, custom: "Custom", rWord: "rounds",
+    left5: "5 seconds left",
+    kDraw: "Drawing", kGuess: "Guessing",
+    pass: who => `Pass the phone to ${who}.`,
+    passGuess: "Got it in hand? The drawing is about to appear.",
+    passDraw: "You can see your word: keep it to yourself, don’t show it to the other player.",
+    ctaGuess: "Yes, ready to play", ctaDraw: "I have the phone",
+    choose: who => `${who}, pick your word`,
+    end: "Done!", endSub: "Drawing time is up.",
+    finKick: n => `Game over · ${n} rounds`, tie: "It’s a tie!", wins: n => `${n} wins!`, newGame: "New game",
+    found: who => `${who} got it`, timeout: "Time’s up", next: "Next round",
+    yourWord: "Your word", finish: "I’m done", finishTitle: "End of drawing", colour: "Colour", pen: "Pen", eraser: "Eraser", undo: "Undo",
+    eraserSize: "Eraser size", penSize: "Stroke width",
+    guessPh: "Your guess", close: "So close!", wrong: "Nope, not that.",
+    hintCat: c => `Hint: category “${c}”`, hintStart: l => `Hint: starts with “${l}”`,
+    point: "point", points: "points", dec: ".",
+    timeUnit: " s",
+    random: "Random"
+  }
+};
+const s = (k, ...a) => { const v = (S[LANG] || S.fr)[k]; return typeof v === "function" ? v(...a) : v; };
+const lg = o => o[LANG] || o.fr;
+
+/* ---------- Icônes ---------- */
+const ICON = {
+  pen:    '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  eraser: '<path d="M4 20h16"/><path d="M6 15l7-8 5 5-5 5H9z"/>',
+  undo:   '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  check:  '<path d="M4 12l5 5L20 6"/>',
+  x:      '<path d="M6 6l12 12M18 6L6 18"/>',
+  menu:   '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  share:  '<path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7h14v-7"/>',
+  eye:    '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  chev:   '<path d="M6 9l6 6 6-6"/>',
+  send:   '<path d="M4 12h15"/><path d="M13 6l6 6-6 6"/>',
+  arrow:  '<path d="M4 12h15"/><path d="M13 6l6 6-6 6"/>',
+  phone:  '<rect x="6" y="2" width="12" height="20"/><path d="M11 18h2"/>',
+  timer:  '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/>',
+  cup:    '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/><path d="M12 14v4M8 21h8M9 18h6"/>'
+};
+const svg = (name, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
+// Niveau de difficulté : jauge à aiguille, de Facile (1) à Impossible (4).
+// Niveau : un cercle qui se remplit davantage à chaque palier (aire proportionnelle).
+const gaugeSvg = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="${[0, 3, 5, 8][n - 1]}" fill="currentColor" stroke="none"/></svg>`;
+// Icône des manches : une pile de cartes, de plus en plus haute pour une partie plus longue (niveau 1, 2 ou 3).
+const roundSvg = lv => { const cards = [0, 1, 2].slice(0, lv).reverse().map(j => `<rect x="${3 + j * 3}" y="${7 - j * 2.5}" width="11" height="13" rx="1.5" stroke-width="1.3"/>`).join(""); return `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">${cards}</svg>`; };
+
+/* ---------- Données ----------
+   Trois niveaux par catégorie, pensés pour le dessin :
+   facile = reconnaissable en quelques traits ; moyen = demande un détail ;
+   difficile = plusieurs éléments, une idée abstraite ou une forme mal connue. */
+const CATS = {
+  "Animaux": {
+    facile:   ["chat","chien","poisson","oiseau","lapin","vache","cochon","canard","mouton","serpent","souris","poule","cheval","lion"],
+    moyen:    ["girafe","pingouin","hérisson","dauphin","perroquet","éléphant","escargot","kangourou","hibou","tortue","papillon","grenouille","ours"],
+    difficile:["caméléon","hippopotame","pieuvre","ornithorynque","paresseux","mille-pattes","axolotl","méduse","chauve-souris","flamant rose","hamster endormi","scorpion"]
+  },
+  "Objets": {
+    facile:   ["chaise","table","lampe","livre","crayon","clé","chaussure","lunettes","verre","ballon","chapeau","cœur"],
+    moyen:    ["parapluie","ciseaux","balai","horloge","téléphone","valise","bouteille","marteau","sac à dos","bougie","ampoule","cadenas"],
+    difficile:["aspirateur","machine à laver","tire-bouchon","boussole","sablier","paratonnerre","trombone","grille-pain","escalator","rouleau à pâtisserie","thermomètre","fauteuil roulant"]
+  },
+  "Nourriture": {
+    facile:   ["pomme","banane","pizza","gâteau","fromage","frites","œuf","glace","carotte","tomate","cerise","champignon"],
+    moyen:    ["crêpe","sushi","hamburger","croissant","baguette","citron","salade","omelette","ananas","bretzel","cupcake","hot-dog"],
+    difficile:["fondue savoyarde","bouillabaisse","mille-feuille","quiche lorraine","macaron","ratatouille","pain perdu","raclette","soupe à l’oignon","couscous","tarte Tatin","pot-au-feu"]
+  },
+  "Métiers": {
+    facile:   ["médecin","pompier","boulanger","professeur","pilote","coiffeur","cuisinier","policier","chanteur","jardinier","marin","roi"],
+    moyen:    ["facteur","plombier","astronaute","maçon","électricien","dentiste","berger","pêcheur","jongleur","mineur","forgeron","bûcheron"],
+    difficile:["vétérinaire","archéologue","architecte","cartographe","horloger","anesthésiste","funambule","prestidigitateur","météorologue","typographe","aiguilleur du ciel","sculpteur"]
+  },
+  "Actions": {
+    facile:   ["dormir","courir","manger","nager","sauter","danser","rire","chanter","boire","applaudir","tomber","lire"],
+    moyen:    ["pleurer","cuisiner","pêcher","jongler","grimper","siffler","se peigner","faire du vélo","faire du ski","éternuer","faire la vaisselle","repasser"],
+    difficile:["méditer","marchander","chuchoter","s’ennuyer","se faufiler","ronfler","tricoter","avoir le vertige","hésiter","se disputer","rêver éveillé","faire un pari"]
+  },
+  "Lieux": {
+    facile:   ["maison","plage","soleil","lune","arbre","montagne","neige","pluie","nuage","étoile","école","fleur"],
+    moyen:    ["château","volcan","pyramide","aéroport","tour Eiffel","phare","cascade","igloo","moulin","cabane","ferme","pont"],
+    difficile:["archipel","labyrinthe","observatoire","gratte-ciel","sous-marin","aurore boréale","désert","banquise","bibliothèque","mer agitée","rivière souterraine","marché de nuit"]
+  },
+  "Sports": {
+    facile:   ["ballon de foot","raquette","vélo","but","médaille","casque","patins","trophée"],
+    moyen:    ["saut en hauteur","escrime","plongeon","tir à l’arc","surf","marathon","boxe","haltères"],
+    difficile:["hors-jeu","saut à la perche","pirouette","slalom","photo-finish","pas de deux","apnée","pénalty"]
+  },
+  "Musique": {
+    facile:   ["guitare","tambour","piano","trompette","maracas","harmonica","cloche","flûte"],
+    moyen:    ["violon","saxophone","harpe","accordéon","batterie","xylophone","contrebasse","vinyle"],
+    difficile:["chef d’orchestre","chorale","tourne-disque","diapason","partition","mélodie","écho","solfège"]
+  },
+  "Véhicules": {
+    facile:   ["voiture","bateau","avion","train","vélo","camion","fusée","moto"],
+    moyen:    ["hélicoptère","sous-marin","montgolfière","tramway","tracteur","dirigeable","téléphérique","trottinette"],
+    difficile:["ferry","funiculaire","char à voile","paquebot","tuk-tuk","side-car","pousse-pousse","radeau"]
+  },
+  "Vêtements": {
+    facile:   ["chapeau","chaussette","gant","écharpe","chaussure","t-shirt","jupe","robe"],
+    moyen:    ["pantalon","manteau","casquette","bonnet","tablier","ceinture","maillot de bain","sandales"],
+    difficile:["costume trois-pièces","kimono","sari","poncho","smoking","kilt","corset","pagne"]
+  },
+  "Espace": {
+    facile:   ["soleil","lune","étoile","planète","fusée","comète","astronaute","météorite"],
+    moyen:    ["station spatiale","Saturne","télescope","sonde","galaxie","navette","rover","anneaux"],
+    difficile:["big bang","trou noir","éclipse","constellation","apesanteur","nébuleuse","astéroïde","année-lumière"]
+  },
+  "Forêt": {
+    facile:   ["arbre","champignon","feuille","fleur","nid","branche","soleil","rivière"],
+    moyen:    ["cerf","renard","sapin","écureuil","cabane","cascade","lac","hibou"],
+    difficile:["clairière","sous-bois","racines","mousse","brouillard","écosystème","sève","automne"]
+  },
+  "Ville": {
+    facile:   ["maison","immeuble","voiture","feu rouge","arbre","banc","lampadaire","boîte aux lettres"],
+    moyen:    ["gare","pont","métro","boulangerie","marché","kiosque à journaux","fontaine","tour"],
+    difficile:["embouteillage","passage piéton","bouche d’égout","quartier","centre-ville","chantier","rond-point","terrasse de café"]
+  },
+  "Fêtes": {
+    facile:   ["gâteau","cadeau","ballon","bougie","sapin de Noël","cœur","feu d’artifice","chapeau de fête"],
+    moyen:    ["bonhomme de neige","citrouille","lanterne","pinata","couronne","masque","confettis","guirlande"],
+    difficile:["réveillon","bal masqué","défilé","carnaval","chasse aux œufs","parade","anniversaire surprise","bonne année"]
+  },
+  "Contes et légendes": {
+    facile:   ["sorcière","dragon","épée","couronne","chevalier","baguette magique","bouclier","licorne"],
+    moyen:    ["sirène","fée","loup","chaperon rouge","pinocchio","géant","trésor","sphinx"],
+    difficile:["malédiction","potion","forteresse","quête","enchantement","prophétie","fantôme","grimoire"]
+  },
+  "Jeux vidéo": {
+    facile:   ["manette","pièce d’or","cœur","joystick","fantôme","vaisseau","pac-man","étoile"],
+    moyen:    ["carte mémoire","console","casque audio","tétris","cubes","jeu de plateforme","monstre","écran cathodique"],
+    difficile:["niveau secret","speedrun","boss final","bug","code de triche","tableau des scores","quête annexe","multijoueur"]
+  },
+  "Cinéma": {
+    facile:   ["caméra","pop-corn","clap","ticket","écran","projecteur","lunettes 3D","fauteuil"],
+    moyen:    ["clap de fin","micro perche","tapis rouge","statuette","affiche","tournage","bobine","pellicule"],
+    difficile:["scénario","générique","fondu au noir","gros plan","travelling","bande-annonce","doublage","mise en scène"]
+  },
+  "Ustensiles": {
+    facile:   ["casserole","fourchette","cuillère","assiette","couteau","verre","bol","poêle"],
+    moyen:    ["passoire","rouleau","mixeur","épluche-légumes","louche","fouet","moule à gâteau","cocotte"],
+    difficile:["robot pâtissier","mandoline","presse-ail","écumoire","thermomètre de cuisine","spatule en silicone","autocuiseur","presse-purée"]
+  },
+  "Mer": {
+    facile:   ["poisson","bateau","vague","soleil","crabe","étoile de mer","bouée","coquillage"],
+    moyen:    ["baleine","requin","phoque","ancre","phare","voilier","plongeur","hippocampe"],
+    difficile:["récif corallien","marée basse","naufrage","houle","abysses","tempête","plateforme pétrolière","sous-marin"]
+  },
+  "Émotions": {
+    facile:   ["rire","pleurer","dormir","sourire","colère","surprise","bisou","clin d’œil"],
+    moyen:    ["bâiller","grimacer","avoir peur","gêné","fatigué","triste","ennui","fier"],
+    difficile:["jalousie","nostalgie","soulagement","malice","étonnement","déception","confiance","hésitation"]
+  },
+  "Bricolage": {
+    facile:   ["marteau","clou","pinceau","échelle","seau","brouette","scie","pelle"],
+    moyen:    ["perceuse","niveau à bulle","mètre ruban","établi","pince","rabot","tournevis","colle"],
+    difficile:["fer à souder","étau","serre-joint","clé à molette","équerre","tenailles","chignole","perceuse à colonne"]
+  }
+};
+// Corrections : uniquement des mots qu'on peut dessiner, plus ou moins difficiles.
+const FIX = {
+  "Animaux": {impossible: ["pangolin","poisson-lune","tatou","loutre sur le dos","ver de terre","oursin"]},
+  "Objets": {impossible: ["gyroscope","sextant","astrolabe","métronome","fil à plomb","mécanisme d’horlogerie"]},
+  "Nourriture": {impossible: ["gnocchi","tajine","sashimi","pâte feuilletée","brioche tressée","bouillon de poule"]},
+  "Métiers": {difficile: ["vétérinaire","archéologue","architecte","cartographe","horloger","chirurgien","funambule","prestidigitateur","joueur de cornemuse","imprimeur","marionnettiste","sculpteur"], impossible: ["paléontologue","calligraphe","ébéniste","dompteur de lions","gardien de phare","cordonnier"]},
+  "Actions": {difficile: ["méditer en tailleur","marcher sur une corde","chuchoter à l’oreille","ronfler","tricoter","avoir le vertige","se faufiler entre les chaises","se disputer un jouet"], impossible: ["faire du trapèze","nager sous l’eau","escalader une falaise","pousser une brouette","tirer à la corde","faire un poirier"]},
+  "Lieux": {impossible: ["crépuscule","fjord","delta","catacombes","canyon","oasis"]},
+  "Sports": {difficile: ["saut à la perche","pirouette","slalom","pas de deux","apnée","pénalty","patinage artistique","ballon de rugby"], impossible: ["saut à ski","curling","biathlon","tir à la carabine","aviron","slalom géant"]},
+  "Musique": {difficile: ["chef d’orchestre","chorale","tourne-disque","diapason","partition","enceinte géante","guitare électrique","haut-parleur"], impossible: ["orchestre en fosse","piano à queue","harpe celtique","orgue de cathédrale","violoncelle","contrebasse géante"]},
+  "Véhicules": {impossible: ["gyrocoptère","hydroglisseur","wagon-citerne","aérostat","chasse-neige","dragueur de mines"]},
+  "Vêtements": {impossible: ["crinoline","jabot","pourpoint","chasuble","fraise élisabéthaine","monocle"]},
+  "Espace": {difficile: ["trou noir","éclipse","constellation","nébuleuse","astéroïde","soucoupe volante"], impossible: ["Grande Ourse","supernova","satellite d’observation","anneaux de Saturne","station spatiale internationale","comète à queue"]},
+  "Forêt": {difficile: ["clairière","sous-bois","racines","mousse","brouillard","écureuil en hiver"], impossible: ["écorce","tourbière","canopée","souche","nid d’oiseau","toile d’araignée"]},
+  "Ville": {difficile: ["embouteillage","passage piéton","bouche d’égout","feu tricolore","centre-ville","chantier","rond-point","terrasse de café"], impossible: ["viaduc","périphérique","égout","pylône électrique","passage souterrain","grue de chantier"]},
+  "Fêtes": {difficile: ["bal masqué","défilé","carnaval","chasse aux œufs","parade","feu d’artifice","pinata géante","gâteau à cinq étages"], impossible: ["fête des morts","feu de la Saint-Jean","kermesse","mascarade","carrousel","lanterne chinoise"]},
+  "Contes et légendes": {difficile: ["potion","forteresse","fantôme","grimoire","dragon à trois têtes","chaudron"], impossible: ["dragon endormi","château hanté","sorcière sur son balai","cheval ailé","tour de magicien","trône de cristal"]},
+  "Jeux vidéo": {difficile: ["niveau secret","boss final","bug","tableau des scores","manette à deux joueurs","console portable","écran de game over","machine d’arcade"], impossible: ["barre de vie","manette à vibration","boss géant","personnage pixelisé","cartouche de jeu","coffre au trésor"]},
+  "Cinéma": {difficile: ["gros plan sur un œil","chaise de réalisateur","micro perche","bobine de film","rideau de théâtre","projecteur géant","pop-corn renversé","spectateur endormi"], impossible: ["caméra sur grue","clap de cinéma","projecteur à bobines","cinéaste sur un plateau","salle obscure","rouleau de pellicule"]},
+  "Ustensiles": {impossible: ["siphon","centrifugeuse","tamis","passoire chinoise","sorbetière","fouet électrique"]},
+  "Mer": {difficile: ["récif corallien","naufrage","tempête","plateforme pétrolière","sous-marin","phare dans la tempête","bateau de pêche","vague géante"], impossible: ["bathyscaphe","gouffre","tourbillon marin","marée noire","phoque sur un rocher","raie manta"]},
+  "Émotions": {difficile: ["se gratter la tête","regarder par le trou de la serrure","faire un sourire en coin","cligner de l’œil","avoir les yeux ronds","se prendre la tête dans les mains"], impossible: ["tirer la langue","faire la moue","se boucher les oreilles","se cacher les yeux","rire aux éclats","pleurer à chaudes larmes"]},
+  "Bricolage": {impossible: ["poulie","treuil","vilebrequin","mortaiseuse","raccord de tuyau","scie sauteuse"]}
+};
+for (const c of Object.keys(FIX)) for (const d of Object.keys(FIX[c])) if (CATS[c]) CATS[c][d] = FIX[c][d];
+
+// Mêmes catégories, en anglais, pour les joueurs qui choisissent la langue anglaise.
+const EN_CATS = {
+  "Animaux": {
+    facile:   ["cat","dog","fish","bird","rabbit","cow","pig","duck","sheep","snake","mouse","hen","horse","lion"],
+    moyen:    ["giraffe","penguin","hedgehog","dolphin","parrot","elephant","snail","kangaroo","owl","turtle","butterfly","frog","bear"],
+    difficile:["chameleon","hippo","octopus","platypus","sloth","centipede","axolotl","jellyfish","bat","flamingo","sleeping hamster","scorpion"],
+    impossible:["pangolin","sunfish","armadillo","otter floating on its back","earthworm","sea urchin"]
+  },
+  "Objets": {
+    facile:   ["chair","table","lamp","book","pencil","key","shoe","glasses","glass","ball","hat","heart"],
+    moyen:    ["umbrella","scissors","broom","clock","phone","suitcase","bottle","hammer","backpack","candle","light bulb","padlock"],
+    difficile:["vacuum cleaner","washing machine","corkscrew","compass","hourglass","lightning rod","paperclip","toaster","escalator","rolling pin","thermometer","wheelchair"],
+    impossible:["gyroscope","sextant","astrolabe","metronome","plumb line","clockwork mechanism"]
+  },
+  "Nourriture": {
+    facile:   ["apple","banana","pizza","cake","cheese","fries","egg","ice cream","carrot","tomato","cherry","mushroom"],
+    moyen:    ["pancake","sushi","hamburger","croissant","baguette","lemon","salad","omelette","pineapple","pretzel","cupcake","hot dog"],
+    difficile:["fondue","bouillabaisse","mille-feuille","quiche","macaron","ratatouille","french toast","raclette","onion soup","couscous","tiramisu","paella"],
+    impossible:["gnocchi","tagine","sashimi","puff pastry","braided brioche","chicken broth"]
+  },
+  "Métiers": {
+    facile:   ["doctor","firefighter","baker","teacher","pilot","hairdresser","cook","police officer","singer","gardener","sailor","king"],
+    moyen:    ["postman","plumber","astronaut","mason","electrician","dentist","shepherd","fisherman","juggler","miner","blacksmith","lumberjack"],
+    difficile:["vet","archaeologist","architect","cartographer","clockmaker","anesthetist","tightrope walker","magician","meteorologist","typesetter","air traffic controller","sculptor"],
+    impossible:["palaeontologist","calligrapher","cabinetmaker","lion tamer","lighthouse keeper","cobbler"]
+  },
+  "Actions": {
+    facile:   ["sleep","run","eat","swim","jump","dance","laugh","sing","drink","clap","fall","read"],
+    moyen:    ["cry","cook","fish","juggle","climb","whistle","comb your hair","ride a bike","ski","sneeze","wash the dishes","iron"],
+    difficile:["meditate","haggle","whisper","be bored","sneak","snore","knit","feel dizzy","hesitate","argue","daydream","make a bet"],
+    impossible:["do the trapeze","swim underwater","climb a cliff","push a wheelbarrow","play tug of war","do a handstand"]
+  },
+  "Lieux": {
+    facile:   ["house","beach","sun","moon","tree","mountain","snow","rain","cloud","star","school","flower"],
+    moyen:    ["castle","volcano","pyramid","airport","Eiffel Tower","lighthouse","waterfall","igloo","windmill","cabin","farm","bridge"],
+    difficile:["archipelago","labyrinth","observatory","skyscraper","submarine","northern lights","desert","ice floe","library","rough sea","underground river","night market"],
+    impossible:["twilight","fjord","delta","catacombs","canyon","oasis"]
+  },
+  "Sports": {
+    facile:   ["football","racket","bicycle","goal","medal","helmet","roller skates","trophy"],
+    moyen:    ["high jump","fencing","diving","archery","surfing","marathon","boxing","dumbbells"],
+    difficile:["offside","pole vault","pirouette","slalom","photo finish","pas de deux","freediving","penalty"],
+    impossible:["ski jump","curling","biathlon","rifle shooting","rowing","giant slalom"]
+  },
+  "Musique": {
+    facile:   ["guitar","drum","piano","trumpet","maracas","harmonica","bell","flute"],
+    moyen:    ["violin","saxophone","harp","accordion","drum kit","xylophone","double bass","vinyl record"],
+    difficile:["conductor","choir","record player","tuning fork","music score","melody","echo","musical staff"],
+    impossible:["polyphony","counterpoint","chromatic scale","syncopated rhythm","dissonant chord","improvisation"]
+  },
+  "Véhicules": {
+    facile:   ["car","boat","plane","train","bike","truck","rocket","motorbike"],
+    moyen:    ["helicopter","submarine","hot air balloon","tram","tractor","airship","cable car","scooter"],
+    difficile:["ferry","funicular","sand yacht","ocean liner","tuk-tuk","sidecar","rickshaw","raft"],
+    impossible:["gyrocopter","hydrofoil","tank wagon","aerostat","snowplough","minesweeper"]
+  },
+  "Vêtements": {
+    facile:   ["hat","sock","glove","scarf","shoe","t-shirt","skirt","dress"],
+    moyen:    ["trousers","coat","cap","beanie","apron","belt","swimsuit","sandals"],
+    difficile:["three-piece suit","kimono","sari","poncho","tuxedo","kilt","corset","sarong"],
+    impossible:["crinoline","jabot","doublet","chasuble","Elizabethan ruff","monocle"]
+  },
+  "Espace": {
+    facile:   ["sun","moon","star","planet","rocket","comet","astronaut","meteorite"],
+    moyen:    ["space station","Saturn","telescope","probe","galaxy","shuttle","rover","rings"],
+    difficile:["big bang","black hole","eclipse","constellation","weightlessness","nebula","asteroid","light-year"],
+    impossible:["Big Dipper","supernova","observation satellite","Saturn’s rings","International Space Station","comet with a tail"]
+  },
+  "Forêt": {
+    facile:   ["tree","mushroom","leaf","flower","nest","branch","sun","river"],
+    moyen:    ["deer","fox","fir tree","squirrel","cabin","waterfall","lake","owl"],
+    difficile:["clearing","undergrowth","roots","moss","fog","ecosystem","sap","autumn"],
+    impossible:["bark","peat bog","canopy","stump","bird’s nest","spider web"]
+  },
+  "Ville": {
+    facile:   ["house","building","car","traffic light","tree","bench","street lamp","postbox"],
+    moyen:    ["station","bridge","metro","bakery","market","newsstand","fountain","tower"],
+    difficile:["traffic jam","zebra crossing","manhole","neighborhood","downtown","construction site","roundabout","café terrace"],
+    impossible:["viaduct","ring road","sewer","power pylon","underpass","construction crane"]
+  },
+  "Fêtes": {
+    facile:   ["cake","gift","balloon","candle","Christmas tree","heart","fireworks","party hat"],
+    moyen:    ["snowman","pumpkin","lantern","piñata","crown","mask","confetti","garland"],
+    difficile:["New Year’s Eve","masked ball","parade","carnival","Easter egg hunt","parade float","surprise party","happy new year"],
+    impossible:["day of the dead","bonfire night","village fair","masquerade","carousel","Chinese lantern"]
+  },
+  "Contes et légendes": {
+    facile:   ["witch","dragon","sword","crown","knight","magic wand","shield","unicorn"],
+    moyen:    ["mermaid","fairy","wolf","red riding hood","Pinocchio","giant","treasure","sphinx"],
+    difficile:["curse","potion","fortress","quest","enchantment","prophecy","ghost","grimoire"],
+    impossible:["metamorphosis","sleeping curse","oracle","memory-erasing spell","founding myth","bewitchment"]
+  },
+  "Jeux vidéo": {
+    facile:   ["controller","gold coin","heart","joystick","ghost","spaceship","Pac-Man","star"],
+    moyen:    ["memory card","console","headphones","Tetris","cubes","platformer","monster","CRT screen"],
+    difficile:["secret level","speedrun","final boss","bug","cheat code","high score table","side quest","multiplayer"],
+    impossible:["health bar","rumble pad","giant boss","pixelated character","game cartridge","treasure chest"]
+  },
+  "Cinéma": {
+    facile:   ["camera","popcorn","clapperboard","ticket","screen","projector","3D glasses","armchair"],
+    moyen:    ["end clap","boom mic","red carpet","statuette","poster","film set","film reel","film strip"],
+    difficile:["screenplay","credits","fade to black","close-up","tracking shot","trailer","dubbing","staging"],
+    impossible:["split screen","crane shot","reel projector","director on set","dark cinema","roll of film"]
+  },
+  "Ustensiles": {
+    facile:   ["pot","fork","spoon","plate","knife","glass","bowl","frying pan"],
+    moyen:    ["colander","rolling pin","blender","peeler","ladle","whisk","cake tin","casserole dish"],
+    difficile:["stand mixer","mandoline","garlic press","skimmer","kitchen thermometer","silicone spatula","pressure cooker","potato masher"],
+    impossible:["siphon","centrifuge","sieve","chinese strainer","ice cream maker","electric whisk"]
+  },
+  "Mer": {
+    facile:   ["fish","boat","wave","sun","crab","starfish","buoy","shell"],
+    moyen:    ["whale","shark","seal","anchor","lighthouse","sailboat","diver","seahorse"],
+    difficile:["coral reef","low tide","shipwreck","swell","abyss","storm","oil rig","submarine"],
+    impossible:["bathyscaphe","chasm","abyssal zone","ocean current","whirlpool","oil spill"]
+  },
+  "Émotions": {
+    facile:   ["laugh","cry","sleep","smile","anger","surprise","kiss","wink"],
+    moyen:    ["yawn","grimace","be scared","embarrassed","tired","sad","boredom","proud"],
+    difficile:["jealousy","nostalgia","relief","mischief","astonishment","disappointment","trust","hesitation"],
+    impossible:["ambivalence","melancholy","euphoria","anguish","grudge","resignation"]
+  },
+  "Bricolage": {
+    facile:   ["hammer","nail","paintbrush","ladder","bucket","wheelbarrow","saw","shovel"],
+    moyen:    ["drill","spirit level","tape measure","workbench","pliers","plane","screwdriver","glue"],
+    difficile:["soldering iron","vice","clamp","adjustable wrench","set square","pincers","brace","pillar drill"],
+    impossible:["pulley","winch","bit brace","mortiser","pipe fitting","jigsaw"]
+  }
+};
+const WORDS = () => LANG === "en" ? EN_CATS : CATS;
+const CAT_EN = {"Au hasard": "Random", "Animaux": "Animals", "Objets": "Objects", "Nourriture": "Food", "Actions": "Actions", "Lieux": "Places", "Métiers": "Jobs", "Sports": "Sports", "Musique": "Music", "Véhicules": "Vehicles", "Vêtements": "Clothes", "Espace": "Space", "Forêt": "Forest", "Ville": "City", "Fêtes": "Festivities", "Contes et légendes": "Tales & legends", "Jeux vidéo": "Video games", "Cinéma": "Cinema", "Ustensiles": "Kitchen", "Mer": "Sea", "Émotions": "Emotions", "Bricolage": "DIY"};
+const catLabel = c => LANG === "en" ? (CAT_EN[c] || c) : c;
+
+// Niveau de difficulté : durée de la manche et libellés.
+const DIFFS = [
+  {id:"facile", sec:20, label:{fr:"Facile", en:"Easy"}, hint:{fr:"Mots simples, <b>20 secondes</b> pour dessiner", en:"Simple words, <b>20 seconds</b> to draw"}},
+  {id:"moyen", sec:45, label:{fr:"Moyen", en:"Medium"}, hint:{fr:"Mots avec un détail, <b>45 secondes</b>", en:"Words with a detail, <b>45 seconds</b>"}},
+  {id:"difficile", sec:60, label:{fr:"Difficile", en:"Hard"}, hint:{fr:"Mots durs, <b>1 minute</b>", en:"Hard words, <b>1 minute</b>"}},
+  {id:"impossible", sec:90, label:{fr:"Impossible", en:"Impossible"}, hint:{fr:"Mots très durs ou abstraits, <b>1 minute 30</b>", en:"Very hard or abstract words, <b>1 minute 30</b>"}}
+];
+const THEMES = [
+  {id:"jaune",  name:{fr:"Jaune", en:"Yellow"}, bg:"#ffe500"},
+  {id:"menthe", name:{fr:"Menthe", en:"Mint"}, bg:"#9fe6c9"},
+  {id:"corail", name:{fr:"Corail", en:"Coral"}, bg:"#ff7a5c"},
+  {id:"violet", name:{fr:"Violet", en:"Violet"}, bg:"#6d3fd1"},
+  {id:"foret",  name:{fr:"Vert forêt", en:"Forest green"}, bg:"#0f3d2e"},
+  {id:"nuit",   name:{fr:"Bleu nuit", en:"Night blue"}, bg:"#14213d"},
+  {id:"noir",   name:{fr:"Noir", en:"Black"}, bg:"#111111"}
+];
+const COLORS = ["#111111","#ffffff","#ff3d2e","#ff8a1f","#ffd60a","#12a36b","#2f5bff","#7b3ff2","#ff7ad9"];
+const WARN_AT = 5;
+let ROUNDS = 6;
+let roundCustom = false;
+const MAIN_CATS = ["Au hasard", "Animaux", "Objets", "Nourriture", "Actions", "Lieux"];
+const EXTRA_CATS = ["Métiers", "Sports", "Musique", "Véhicules", "Vêtements", "Espace", "Forêt", "Ville", "Fêtes", "Contes et légendes", "Jeux vidéo", "Cinéma", "Ustensiles", "Mer", "Émotions", "Bricolage"];
+const catNames = () => MAIN_CATS;
+// Nombre de manches : les trois choix rapides, plus une personnalisation.
+const ROUND_OPTS = [4, 6, 10];
+
+/* ---------- Utilitaires ---------- */
+const $ = id => document.getElementById(id);
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k === "html") n.innerHTML = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    n.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return n;
+}
+// Relance une animation CSS sur un élément déjà affiché.
+function replay(node, cls) {
+  node.classList.remove(cls);
+  void node.offsetWidth;
+  node.classList.add(cls);
+}
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove("show"), 2800);
+}
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/œ/gi,"oe").toLowerCase().replace(/[^a-z0-9]/g,"");
+const letterCount = w => [...w].filter(c => /[\p{L}\p{N}]/u.test(c)).length;
+const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+// Les points sont stockés en dixièmes : 10 = 1 point, 5 = 0,5 point.
+const fmtPts = t => (t % 10 ? Math.floor(t / 10) + s("dec") + (t % 10) : String(t / 10));
+const ptsLabel = t => `${fmtPts(t)} ${t === 10 ? s("point") : s("points")}`;
+function lev(a, b) {
+  let prev = Array.from({length: b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function isClose(guess, word) {
+  const g = norm(guess), w = norm(word);
+  if (!g || g === w) return false;
+  return lev(g, w) <= Math.max(1, Math.floor(w.length / 4));
+}
+function luminance(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  const ink = luminance(t.bg) > 0.3 ? "#111111" : "#fbfaf4";
+  const root = document.documentElement.style;
+  root.setProperty("--bg", t.bg);
+  root.setProperty("--ink", ink);
+  try { localStorage.setItem("dd_theme", t.id); } catch (e) {}
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t.bg);
+}
+function savedTheme() { try { return localStorage.getItem("dd_theme") || "jaune"; } catch (e) { return "jaune"; } }
+
+/* ---------- Sons (synthétisés, aucun fichier) ---------- */
+let SOUND = (() => { try { return localStorage.getItem("dd_sound") !== "off"; } catch (e) { return true; } })();
+let AC = null;
+function audio() {
+  if (!SOUND) return null;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    return AC;
+  } catch (e) { return null; }
+}
+function tone(f, dur = 0.12, type = "sine", vol = 0.12, at = 0, fEnd = null) {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime + at;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f, t);
+  if (fEnd) o.frequency.exponentialRampToValueAtTime(fEnd, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function whoosh(dur = 0.28, vol = 0.09) {
+  const c = audio(); if (!c) return;
+  const len = Math.floor(c.sampleRate * dur);
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = c.createBufferSource(); src.buffer = buf;
+  const f = c.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 900;
+  const g = c.createGain(); g.gain.value = vol;
+  src.connect(f).connect(g).connect(c.destination);
+  src.start();
+}
+const SFX = {
+  tap:     () => tone(880, 0.035, "triangle", 0.05),
+  tick:    () => tone(1000, 0.05, "square", 0.035),
+  start:   () => { tone(523, 0.12, "sine", 0.12); tone(784, 0.2, "sine", 0.12, 0.1); },
+  reveal:  () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, "triangle", 0.13, i * 0.09)); tone(1568, 0.5, "sine", 0.07, 0.36); },
+  done:    () => { [784, 659, 523].forEach((f, i) => tone(f, 0.16, "sine", 0.12, i * 0.11)); },
+  swoosh:  () => whoosh(),
+  choose:  () => tone(660, 0.09, "triangle", 0.1),
+  hint:    () => tone(1318, 0.35, "sine", 0.07),
+  wrong:   () => tone(180, 0.18, "sine", 0.16, 0, 90),
+  found:   () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", 0.13, i * 0.09)),
+  timeout: () => tone(330, 0.6, "sawtooth", 0.05, 0, 110),
+  warn:    () => { tone(740, 0.1, "sine", 0.1); tone(740, 0.1, "sine", 0.1, 0.16); },
+  mark:    () => { tone(523, 0.18, "sine", 0.1); tone(784, 0.22, "sine", 0.1, 0.14); },
+  logo:    () => [523, 659, 784].forEach((f, i) => tone(f, 0.3, "triangle", 0.09, i * 0.14)),
+  letter:  () => tone(900 + Math.random() * 500, 0.07, "triangle", 0.05),
+  click:   (p = 1) => tone(1400, 0.025, "triangle", 0.005 + 0.025 * p),
+  exit:    () => whoosh(0.4, 0.07),
+  chime:   () => { tone(1318, 1.4, "triangle", 0.06); tone(1976, 1.8, "sine", 0.025, 0.01); }
+};
+document.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest("button")) SFX.tap(); }, true);
+
+/* ---------- État ---------- */
+const CFG = {diff: "moyen", cat: "Au hasard"};
+let G = null;
+let timer = {on: false, end: 0, total: 0, onEnd: null, done: false, warned: false};
+let color = COLORS[0], size = 7, tool = "pen", sizeOpen = false, colorOpen = false;
+// Couleurs récemment utilisées, affichées sur le bouton couleur.
+let recent = ["#111111", "#2f5bff", "#ff3d2e"];
+let eraserSize = 18;
+function pickColor(c) { color = c; recent = [c, ...recent.filter(x => x !== c)].slice(0, 3); }
+let cur = null, strokes = [], cv, ctx, cssW = 1, cssH = 1, dpr = 1;
+let panelSig = "", ovSig = "", panelKey = "";
+
+function pool(cat, diff) {
+  const data = WORDS();
+  const cats = cat === "Au hasard" ? Object.keys(data) : [cat];
+  const out = new Set();
+  for (const c of cats) for (const w of (data[c]?.[diff] || [])) out.add(w);
+  // Repli : si le niveau est vide pour cette catégorie, on prend tous les niveaux de la catégorie.
+  if (out.size < 3) for (const c of cats) for (const d of ["facile","moyen","difficile","impossible"]) for (const w of (data[c]?.[d] || [])) out.add(w);
+  return [...out];
+}
+function threeWords() {
+  const used = new Set(G.used);
+  const all = shuffle(pool(CFG.cat, CFG.diff));
+  let c = all.filter(w => !used.has(w));
+  if (c.length < 3) c = all;
+  return c.slice(0, 3);
+}
+const drawer = () => G.names[G.drawer];
+const guesser = () => G.names[1 - G.drawer];
+
+/* ---------- Langue : textes fixes ---------- */
+function applyLang() {
+  document.documentElement.lang = LANG;
+  const set = (id, txt) => { const n = $(id); if (n) n.textContent = txt; };
+  set("mKick", s("kicker")); set("hCat", s("cat")); set("hDiff", s("level")); set("hRounds", s("rounds"));
+  set("hWho", s("who")); set("hColor", s("colorH")); set("lbl1", s("n1")); set("lbl2", s("n2"));
+  set("startTxt", s("start")); set("resumeTxt", s("resume")); set("themesBack", s("backBtn"));
+  set("themesH", s("themesH")); set("menuBtn", s("menu")); set("backHome", s("back"));
+  ["n1", "n2"].forEach((id, i) => {
+    const inp = $(id);
+    if (["Joueur " + (i + 1), "Player " + (i + 1)].includes(inp.value)) inp.value = s(i ? "p2" : "p1");
+  });
+}
+
+/* ---------- Menu ---------- */
+function buildMenu() {
+  applyLang();
+  $("mw1").textContent = LANG === "en" ? "Word to" : "Mot";
+  $("mw2").textContent = LANG === "en" ? "Draw" : "à dessiner";
+  $("catList").replaceChildren(...catNames().map((c, i) => el("li", {},
+    el("button", {class: "crow" + (CFG.cat === c ? " on" : ""),
+      onclick: () => { CFG.cat = c; buildMenu(); }},
+      el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)))));
+  $("diffTabs").replaceChildren(...DIFFS.map((d, i) => el("button", {
+    class: "crow" + (CFG.diff === d.id ? " on" : ""),
+    onclick: () => { CFG.diff = d.id; buildMenu(); }
+  }, el("span", {class: "num", html: gaugeSvg(i + 1)}), lg(d.label))));
+  $("diffNote").innerHTML = lg(DIFFS.find(d => d.id === CFG.diff).hint) + ".";
+  $("roundRows").replaceChildren(...[...ROUND_OPTS.map((n, i) => el("button", {class: "crow" + (!roundCustom && ROUNDS === n ? " on" : ""), onclick: () => { ROUNDS = n; roundCustom = false; buildMenu(); }},
+    el("span", {class: "num", html: roundSvg(i + 1)}), s("rOpt", n))),
+    el("button", {class: "crow sub", onclick: () => { roundCustom = true; buildMenu(); }},
+      el("span", {class: "num", html: svg("pen")}), s("custom")),
+    ...(roundCustom ? [el("div", {class: "crow rowIn"},
+      el("input", {class: "rin", type: "number", min: "2", max: "30", inputmode: "numeric", value: String(ROUNDS), onchange: e => { const v = parseInt(e.target.value, 10); ROUNDS = isNaN(v) ? ROUNDS : Math.min(30, Math.max(2, v)); buildMenu(); }}),
+      s("rWord"))] : [])]);
+  $("moreBtn").replaceChildren(el("span", {}, EXTRA_CATS.includes(CFG.cat) ? s("moreCat", catLabel(CFG.cat)) : s("more")), el("span", {html: svg("arrow")}));
+
+  $("resume").classList.toggle("hidden", !G);
+  $("soundRows").replaceChildren(
+    el("span", {class: "lbl"}, s("sound")),
+    el("div", {class: "opts"},
+      el("button", {class: "opt" + (SOUND ? " on" : ""), "aria-label": s("soundOn"), onclick: () => setSound(true), html: svg("check")}),
+      el("button", {class: "opt" + (!SOUND ? " on" : ""), "aria-label": s("soundOff"), onclick: () => setSound(false), html: svg("x")})));
+}
+$("resume").onclick = () => resumeGame();
+$("moreBtn").onclick = () => showThemes(true);
+$("themesBack").onclick = () => showThemes(false);
+function showThemes(v) {
+  $("themes").classList.toggle("hidden", !v);
+  if (v) $("themeList").replaceChildren(...EXTRA_CATS.map((c, i) => el("li", {},
+    el("button", {class: "crow" + (CFG.cat === c ? " on" : ""), onclick: () => { CFG.cat = c; showThemes(false); buildMenu(); }},
+      el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)))));
+}
+function setSound(v) {
+  SOUND = v;
+  try { localStorage.setItem("dd_sound", v ? "on" : "off"); } catch (e) {}
+  buildMenu();
+}
+$("start").onclick = () => {
+  const n1 = $("n1").value.trim().slice(0, 20) || s("p1");
+  const n2 = $("n2").value.trim().slice(0, 20) || s("p2");
+  $("menuErr").textContent = "";
+  CFG.dur = DIFFS.find(d => d.id === CFG.diff).sec;
+  G = {names: [n1, n2], drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  showGame();
+  setPhase("handover");
+};
+
+/* ---------- Accueil et lancement ---------- */
+const DECO = ["cup", "eye", "phone", "check", "send", "undo", "eraser"];
+function setLang(v) {
+  LANG = v;
+  try { localStorage.setItem("dd_lang", v); } catch (e) {}
+  renderHome();
+}
+// Transition : la tuile devient claire, son contenu fonce, puis la page du jeu apparaît en fondu.
+function transitionTo(tile, go) {
+  if (tile.dataset.busy) return;
+  tile.dataset.busy = "1";
+  const cs = getComputedStyle(document.documentElement);
+  const ink = cs.getPropertyValue("--ink").trim(), bg = cs.getPropertyValue("--bg").trim();
+  try { SFX.tap(); } catch (e) {}
+  const flip = tile.animate([
+    {background: bg, color: ink},
+    {background: ink, color: bg}
+  ], {duration: 120, easing: "ease-out", fill: "forwards"});
+  flip.onfinish = () => {
+    go();
+    flip.cancel();
+    delete tile.dataset.busy;
+    const page = [$("menu"), $("menu2")].find(e => e && !e.classList.contains("hidden"));
+    if (page) page.animate([{opacity: 0}, {opacity: 1}], {duration: 200, easing: "ease-out"});
+  };
+}
+function renderHome() {
+  applyLang();
+  $("homeDots").replaceChildren(...THEMES.map(t => el("button", {
+    class: "bgdot" + (t.id === savedTheme() ? " on" : ""), title: lg(t.name), "aria-label": lg(t.name),
+    style: `background:${t.bg}`,
+    onclick: () => { applyTheme(t.id); renderHome(); }
+  })));
+  $("langSw").replaceChildren(...["fr", "en"].map(l => el("button", {class: "lg" + (LANG === l ? " on" : ""), onclick: () => setLang(l)}, l.toUpperCase())));
+  $("grid").replaceChildren(
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { $("home").classList.add("hidden"); gateOpen(); })},
+      el("span", {class: "ic", html: svg("timer")}), el("span", {class: "tn"}, s("game"))),
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, openGame2)}, el("span", {class: "ic", html: svg("pen")}), el("span", {class: "tn"}, s("game2"))),
+    ...DECO.map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {html: svg(n)}))));
+}
+function goHome() {
+  ["overlay", "game", "menu", "themes", "game2", "menu2", "themes2", "gate"].forEach(id => $(id).classList.add("hidden"));
+  $("home").classList.remove("hidden");
+  renderHome();
+}
+function showGame() {
+  $("menu").classList.add("hidden");
+  $("game").classList.remove("hidden");
+  sizeStage();
+}
+function goMenu() {
+  if (netOn()) { netEnd(); return; }
+  stopTimer();
+  $("overlay").classList.add("hidden");
+  $("game").classList.add("hidden");
+  $("menu").classList.remove("hidden");
+  buildMenu();
+}
+function resumeGame() {
+  showGame();
+  setPhase(G.phase === "end" ? "handoff" : G.phase);
+}
+$("menuBtn").onclick = goMenu;
+$("backHome").onclick = goHome;
+
+// Écran de lancement : le titre se lève lettre par lettre, la règle se trace, puis confettis.
+const LETTER_COLORS = ["#2f5bff","#ff3d2e","#12a36b","#ff8a1f","#7b3ff2","#ff7ad9","#ffb000","#00a3c4"];
+function playSplash() {
+  const letters = (txt, base) => [...txt].map((c, i) => el("span", {class: "lt"},
+    el("span", {style: `animation-delay:${(base + i * 0.06).toFixed(2)}s;--c:${LETTER_COLORS[i % LETTER_COLORS.length]}`}, c === " " ? " " : c)));
+  $("spT").replaceChildren(
+    el("span", {class: "ln"}, ...letters("Devine-moi", 0.1)),
+    el("span", {class: "ln"}, el("span", {class: "spA"}, ...letters("ça", 0.85)), el("span", {class: "spArr", html: '<svg id="spSvg" aria-hidden="true"><path id="spPath" pathLength="1" fill="none" stroke="currentColor" stroke-linecap="butt"/></svg>'})));
+  SFX.logo();
+  // La flèche est dessinée à la taille exacte de la zone : une seule forme, tige et pointe ensemble.
+  const box = document.querySelector(".spArr"), W = Math.max(80, box.clientWidth), H = Math.max(30, box.clientHeight);
+  const sw = Math.max(3, H * 0.085), mid = H / 2, hw = H * 0.62, tipX = W - sw / 2, xT = tipX - hw, cx = xT + hw * 0.12;
+  document.getElementById("spSvg").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const sp = document.getElementById("spPath");
+  sp.setAttribute("d", `M0 ${mid}H${tipX}Q${cx} ${mid} ${xT} ${sw / 2}M${tipX} ${mid}Q${cx} ${mid} ${xT} ${H - sw / 2}`);
+  sp.setAttribute("stroke-width", sw);
+  for (let i = 0; i < 12; i++) setTimeout(SFX.letter, 100 + i * 75);
+  const cnt = $("spCount"), t0 = Date.now();
+  let lastV = -1;
+  const step = () => {
+    const p = Math.min(1, (Date.now() - t0) / 2800);
+    const v = Math.round(p * 100);
+
+    lastV = v;
+    cnt.firstChild.textContent = String(v);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  step();
+  setTimeout(() => { document.querySelector(".spArr").classList.add("go"); SFX.exit(); }, 3000);
+  setTimeout(() => { confetti(); SFX.chime(); }, 2900);
+  // Seule transition entre deux écrans : l'écran d'ouverture se retire vers le haut, l'accueil est déjà là.
+  setTimeout(() => { renderHome(); $("home").classList.remove("hidden"); $("splash").style.animation = "wipeUp .9s var(--ease) forwards"; }, 3400);
+  setTimeout(() => $("splash").classList.add("hidden"), 4300);
+}
+
+/* ---------- Phases ---------- */
+function setPhase(p) {
+  if (netOn() && !NETG.host) { netSend({k: "req", act: "phase", p}); return; }
+  if (netOn() && p === "handover") { G.options = []; strokes = []; cur = null; G.tries = []; p = "choose"; }
+  G.phase = p;
+  stopTimer();
+  if (p === "handover" || p === "handoff") SFX.swoosh();
+  else if (p === "draw" || p === "guess") SFX.start();
+  else if (p === "end") SFX.done();
+  else if (p === "choose") SFX.choose();
+  if (p === "handover") {
+    G.options = []; strokes = []; cur = null;
+    tool = "pen"; sizeOpen = false; color = COLORS[0];
+    redraw();
+  }
+  else if (p === "choose") {
+    G.options = threeWords();
+    // 30 secondes pour choisir ; sinon le mot est tiré au hasard parmi les trois.
+    startTimer(30, () => pickWord(G.options[Math.floor(Math.random() * G.options.length)]));
+  }
+  else if (p === "draw") { startTimer(CFG.dur, () => finishDrawing()); }
+  else if (p === "guess") {
+    G.msg = null; G.hint = null; G.hintShown = false; G.tries = [];
+    G.reveal = lettersOrder(G.word); G.revealN = 0;
+    startTimer(CFG.dur, () => reveal({by: "timeout"}));
+  }
+  else if (p === "end") { setTimeout(() => { if (G && G.phase === "end") setPhase("handoff"); }, 2000); }
+  else if (p === "handoff" && netOn()) { setTimeout(() => { if (G && G.phase === "handoff") setPhase("guess"); }, 1800); }
+  panelSig = ""; ovSig = "";
+  render();
+}
+function finishDrawing() { if (G && G.phase === "draw") setPhase("end"); }
+function reveal(result) {
+  if (netOn() && !NETG.host) return;
+  G.result = result;
+  const di = G.drawer, gi = 1 - G.drawer;
+  if (result.by === "found") {
+    // Le dessinateur gagne 0,5 de base, plus un bonus de 0 à 0,5 selon la vitesse de la trouvaille.
+    const left = Math.max(0, (timer.end - Date.now()) / 1000);
+    const bonus = Math.min(5, Math.max(0, Math.floor((5 * left) / timer.total + 0.1)));
+    G.pts[gi] += 10; G.pts[di] += 5 + bonus; SFX.found(); confetti();
+  }
+  else { SFX.timeout(); }
+  stopTimer();
+  G.phase = "reveal";
+  panelSig = ""; ovSig = "";
+  render();
+}
+function finishGame() { stopTimer(); G.phase = "final"; ovSig = ""; panelSig = ""; render(); }
+function nextRound() {
+  if (netOn() && !NETG.host) { netSend({k: "req", act: "next"}); return; }
+  if (G.round >= ROUNDS) { finishGame(); return; }
+  G.drawer = 1 - G.drawer;
+  G.round += 1;
+  G.used = [...G.used, G.word].slice(-60);
+  G.word = null;
+  G.result = null;
+  setPhase("handover");
+}
+function pickWord(w) { if (netOn() && !NETG.host) { netSend({k: "req", act: "pick", w}); return; } G.word = w; setPhase("draw"); }
+
+/* ---------- Minuteur et rappel ---------- */
+function startTimer(sec, onEnd) {
+  timer = {on: true, end: Date.now() + sec * 1000, total: sec, onEnd, done: false, warned: false};
+}
+function stopTimer() { timer.on = false; $("timer").textContent = ""; $("timer").classList.remove("urgent"); if ($("timer2")) { $("timer2").textContent = ""; $("timer2").classList.remove("urgent"); } }
+let notifT = null;
+function notify() {
+  const n = $("notif");
+  n.replaceChildren(el("span", {html: svg("timer")}), s("left5"));
+  SFX.warn();
+  n.classList.add("show");
+  clearTimeout(notifT);
+  notifT = setTimeout(() => n.classList.remove("show"), 2000);
+}
+function tick() {
+  if (!timer.on) return;
+  const left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
+  const t = $("timer");
+  t.textContent = left + s("timeUnit");
+  const ot = $("ovTimer");
+  if (ot) ot.textContent = left + s("timeUnit");
+  const t2el = $("timer2");
+  if (t2el) { t2el.textContent = left + s("timeUnit"); t2el.classList.toggle("urgent", left <= WARN_AT); }
+  t.classList.toggle("urgent", left <= WARN_AT);
+  if (left <= WARN_AT && left > 0 && left !== timer.lastSec) { timer.lastSec = left; SFX.tick(); }
+  // Un petit signal toutes les 30 secondes sur les minuteurs longs.
+  if (timer.total >= 45 && left > 0 && left % 30 === 0 && left !== timer.lastMark) { timer.lastMark = left; SFX.mark(); }
+  // Un seul indice, selon le niveau : Facile à 7 s, Moyen à 15 s, Difficile à 20 s, Impossible à 30 s.
+  if (G && G.phase === "guess" && G.reveal) {
+    const n = revealTarget(left);
+    if (n > G.revealN) { G.revealN = n; updatePattern(); SFX.hint(); }
+  }
+  const hintAt = {facile: 7, moyen: 15, difficile: 20, impossible: 30}[CFG.diff];
+  if (G && G.phase === "guess" && !G.hintShown && hintAt && left <= hintAt && left > 0) {
+    G.hintShown = true;
+    G.hint = makeHint(G.word);
+    SFX.hint();
+    renderFeedback();
+  }
+  if (!timer.warned && left <= WARN_AT && left > 0 && timer.total > WARN_AT) {
+    timer.warned = true;
+    notify();
+  }
+  if (left === 0 && !timer.done) {
+    timer.done = true;
+    const f = timer.onEnd;
+    stopTimer();
+    if (f) f();
+  }
+}
+setInterval(tick, 200);
+
+/* ---------- Rendu ---------- */
+function render() {
+  if (!G) return;
+  netPush();
+  $("info").replaceChildren(...[0, 1].map(i => el("div", {class: "sc"},
+    el("div", {class: "scName"}, el("span", {class: "scIco", html: svg(G.drawer === i ? "pen" : "eye")}), G.names[i]),
+    el("div", {class: "scNum"}, fmtPts(G.pts[i])))));
+  const fullScreen = ["handover", "choose", "end", "handoff", "reveal", "final"].includes(G.phase) && !(netOn() && G.phase === "handoff" && isDrawerMe());
+  if (fullScreen) {
+    const sig = [G.phase, G.round, G.word, G.result && G.result.by, G.pts.join(","), G.options.join(","), LANG].join("|");
+    if (sig !== ovSig) { ovSig = sig; $("overlay").classList.remove("hidden"); renderOverlay(); }
+  } else {
+    ovSig = "";
+    $("overlay").classList.add("hidden");
+  }
+  const sig = [G.phase, G.round, G.word, sizeOpen, colorOpen, tool, color, LANG, (G.tries || []).length].join("|");
+  if (sig !== panelSig) { panelSig = sig; renderPanel(); }
+  if (netOn()) { $("panel").style.height = !isDrawerMe() && G.phase === "draw" ? "auto" : ""; if (!$("game").classList.contains("hidden")) sizeStage(); }
+}
+
+function menuBar() {
+  return el("div", {class:"ov-bar"}, el("button", {class:"pill", onclick: goMenu}, s("menu")));
+}
+function renderOverlay() {
+  const g = G, ov = $("overlay");
+  ov.replaceChildren();
+  ov.className = "";
+  if (netOn() && (g.phase === "handover" || g.phase === "handoff")) { renderNetTurn(); return; }
+  if (g.phase === "handover" || g.phase === "handoff") {
+    const isHandoff = g.phase === "handoff";
+    const who = isHandoff ? guesser() : drawer();
+    if (isHandoff) ov.classList.add("inv");
+    ov.append(menuBar(),
+      el("div", {class:"ov-top"},
+        el("div", {class:"ov-phone rise", html: svg("phone")}),
+        el("div", {class:"kicker rise d1"}, isHandoff ? s("kGuess") : s("kDraw")),
+        el("h2", {class:"ov-title rise d1"}, s("pass", who)),
+        el("p", {class:"ov-sub rise d2"}, isHandoff ? s("passGuess") : s("passDraw"))),
+      el("button", {class:"ov-cta rise d2", onclick: () => isHandoff ? setPhase("guess") : setPhase("choose")},
+        isHandoff ? s("ctaGuess") : s("ctaDraw"), el("span", {html: svg("arrow")})));
+  } else if (g.phase === "choose") {
+    ov.append(el("div", {class:"ov-bar ov-bar2"}, el("span", {id:"ovTimer", class:"ov-count"}), el("button", {class:"pill", onclick: goMenu}, s("menu"))), el("div", {class:"ov-top"},
+      el("div", {class:"kicker rise"}, netOn() && !isDrawerMe() ? t2(`${drawer()} choisit un mot…`, `${drawer()} is picking a word…`) : s("choose", drawer())),
+      el("div", {class:"ov-words"}, (netOn() && !isDrawerMe() ? [] : g.options).map(w => el("button", {onclick: () => pickWord(w)},
+        w.toUpperCase(), el("span", {html: svg("arrow")}))))));
+  } else if (g.phase === "end") {
+    ov.classList.add("inv", "fin");
+    ov.append(el("div", {class:"fin-title"}, s("end")),
+      el("div", {class:"fin-sub"}, s("endSub")));
+  } else if (g.phase === "final") {
+    const order = [0, 1].sort((a, b) => g.pts[b] - g.pts[a]);
+    const tie = g.pts[0] === g.pts[1];
+    ov.classList.add("inv");
+    // Pilier : le premier est plus haut que le second ; en égalité, même hauteur.
+    const place = (i, k, h) => el("div", {class: "pillar rise d" + (k + 1)},
+      el("div", {class: "pName"}, g.names[i]),
+      el("div", {class: "pBar", style: `height:${h}px`}, el("div", {class: "pNum"}, fmtPts(g.pts[i]))));
+    ov.append(menuBar(), el("div", {class: "ov-top"},
+      el("div", {class: "trophy pop", html: svg("cup")}),
+      el("div", {class: "kicker rise"}, s("finKick", ROUNDS)),
+      el("h2", {class: "ov-title rise d1"}, tie ? s("tie") : s("wins", g.names[order[0]])),
+      el("div", {class: "podiums"}, place(order[0], 0, tie ? 150 : 190), place(order[1], 1, tie ? 150 : 120))),
+      el("button", {class: "ov-cta rise d2", onclick: () => { G = null; goMenu(); }}, s("newGame"), el("span", {html: svg("arrow")})));
+    if (!tie) confetti();
+  } else if (g.phase === "reveal") {
+    const found = g.result && g.result.by === "found";
+    ov.append(menuBar(), el("div", {class:"ov-top"},
+      el("div", {class:"kicker rise"}, found ? s("found", guesser()) : s("timeout")),
+      el("div", {class:"ov-big", style: `font-size:${Math.min(15, 110 / Math.max(4, g.word.length))}vw;overflow-wrap:anywhere`}, g.word.toUpperCase())),
+      el("button", {class:"ov-cta rise d2", onclick: nextRound}, s("next"), el("span", {html: svg("arrow")})));
+  }
+}
+
+// Confettis : petits morceaux de couleur qui tombent, supprimés après l'animation.
+function confetti() {
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement("i");
+    p.className = "cf";
+    p.style.left = (Math.random() * 100) + "vw";
+    p.style.background = COLORS[i % COLORS.length];
+    p.style.setProperty("--x", ((Math.random() - 0.5) * 160) + "px");
+    p.style.animationDuration = (1.8 + Math.random() * 1.4) + "s";
+    p.style.animationDelay = (Math.random() * 0.4) + "s";
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3800);
+  }
+}
+
+function renderPanel() {
+  const g = G, pn = $("panel");
+  const key = g.phase + g.round + LANG;
+  const fresh = key !== panelKey;
+  panelKey = key;
+  pn.replaceChildren();
+  if (fresh && (g.phase === "draw" || g.phase === "guess")) replay($("stage"), "rise");
+  if (g.phase === "draw" && netOn() && !isDrawerMe()) {
+    pn.append(el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2(`${drawer()} dessine…`, `${drawer()} is drawing…`))));
+  } else if (g.phase === "draw") {
+    const kids = [
+      el("div", {class:"wordline"},
+        el("span", {class:"kicker"}, s("yourWord")),
+        el("span", {class:"word"}, g.word.toUpperCase()),
+        el("button", {class:"finish inv", title: s("finishTitle"), onclick: finishDrawing},
+          s("finish"), el("span", {html: svg("check")}))),
+      toolsRow(),
+      sizeOpen ? sizeBar() : null,
+      colorOpen ? paletteRow() : null
+    ];
+    pn.append(...kids.filter(Boolean));
+  } else if (g.phase === "guess" && netOn() && isDrawerMe()) {
+    pn.append(el("div", {class:"patRow"}, patternEl(), el("span", {class:"count"}, `(${countLabel()})`)), el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2("Ils devinent…", "They’re guessing…"))));
+  } else if (g.phase === "guess") {
+    const input = el("input", {id:"guess", placeholder: s("guessPh"), autocomplete:"off", autocapitalize:"off", enterkeyhint:"send",
+      onkeydown: e => { if (e.key === "Enter") submitGuess(); }});
+    pn.append(
+      el("div", {class:"patRow"},
+        patternEl(),
+        el("span", {class:"count"}, `(${countLabel()})`)),
+      el("div", {class:"guessRow"}, input, el("button", {onclick: submitGuess, html: svg("send", "i")})),
+      el("div", {id:"feedback"}),
+      el("div", {id:"hint", class:"hintLine"}));
+  }
+  if (g.phase === "guess" && (!netOn() || isDrawerMe())) pn.append(el("div", {class: "tryList"}, (G.tries || []).slice(-3).map(t => el("div", {class: "tryLine"}, t))));
+  renderFeedback();
+  if (fresh) [...pn.children].forEach((c, i) => { c.classList.add("rise"); c.style.animationDelay = (i * 0.08) + "s"; });
+}
+
+function toolsRow() {
+  const swatches = el("div", {class:"btns"},
+    el("button", {class: "colorBtn" + (colorOpen ? " on" : ""), title: s("colour"), "aria-label": s("colour"),
+      onclick: () => { colorOpen = !colorOpen; sizeOpen = false; panelSig = ""; renderPanel(); }},
+      recent.map(c => el("span", {class: "colorDot", style: `background:${c}`})),
+      el("span", {class: "chev", html: svg("chev")})));
+  const btns = el("div", {class:"btns"},
+    el("button", {class: "ico" + (tool === "pen" ? " on" : ""), title: s("pen"), "aria-label": s("pen"),
+      onclick: () => {
+        colorOpen = false;
+        if (tool === "pen") sizeOpen = !sizeOpen;
+        else { tool = "pen"; sizeOpen = false; }
+        panelSig = ""; renderPanel();
+      }, html: svg("pen")}),
+    el("button", {class: "ico" + (tool === "eraser" ? " on" : ""), title: s("eraser"), "aria-label": s("eraser"),
+      onclick: () => { if (tool === "eraser") sizeOpen = !sizeOpen; else { tool = "eraser"; sizeOpen = false; } colorOpen = false; panelSig = ""; renderPanel(); }, html: svg("eraser")}),
+    el("button", {class: "ico", title: s("undo"), "aria-label": s("undo"), onclick: undoStroke, html: svg("undo")}));
+  return el("div", {class:"tools"}, swatches, btns);
+}
+function paletteRow() {
+  return el("div", {class:"palette"}, COLORS.map(c => el("button", {
+    class: "sw" + (c === color ? " on" : ""), style: `background:${c}`, "aria-label": s("colour"),
+    onclick: () => { pickColor(c); tool = "pen"; colorOpen = false; panelSig = ""; renderPanel(); }
+  })));
+}
+function sizeBar() {
+  const eraser = tool === "eraser";
+  const cur = eraser ? eraserSize : size;
+  const preview = el("span", {});
+  const setPreview = v => { const d = Math.max(4, Math.min(34, v)); preview.style.width = preview.style.height = d + "px"; };
+  setPreview(cur);
+  const range = el("input", {type:"range", min: eraser ? "6" : "2", max: eraser ? "60" : "30", value: String(cur), "aria-label": eraser ? s("eraserSize") : s("penSize")});
+  range.addEventListener("input", () => {
+    if (eraser) eraserSize = +range.value; else size = +range.value;
+    setPreview(+range.value);
+  });
+  return el("div", {id:"sizeBar"}, el("div", {id:"sizePreview"}, preview), range);
+}
+// Lettres révélées pendant la devinette (Moyen, Difficile, Impossible).
+function lettersOrder(w) {
+  const idx = [];
+  [...w].forEach((c, i) => { if (/[\p{L}\p{N}]/u.test(c)) idx.push(i); });
+  return shuffle(idx);
+}
+function revealTarget(left) {
+  const t = CFG.dur;
+  if (CFG.diff === "facile") return left <= t / 2 ? 1 : 0;
+  if (CFG.diff === "moyen") return left <= t / 2 ? 1 : 0;
+  if (CFG.diff === "difficile") return left <= 10 ? 3 : left <= 20 ? 2 : left <= 40 ? 1 : 0;
+  if (CFG.diff === "impossible") return left <= t / 4 ? 3 : left <= t / 3 ? 2 : left <= t / 2 ? 1 : 0;
+  return 0;
+}
+function patternEl() {
+  const shown = new Set((G.reveal || []).slice(0, G.revealN || 0));
+  let idx = 0;
+  return el("div", {class: "pattern"}, G.word.split(" ").map(word => {
+    const chars = [...word].map(c => {
+      const i = idx++;
+      if (!/[\p{L}\p{N}]/u.test(c)) return el("span", {class: "ch"}, c);
+      return el("span", {class: "ch"}, shown.has(i) ? c.toUpperCase() : "_");
+    });
+    idx++;
+    return el("span", {class: "wd"}, chars);
+  }));
+}
+function countLabel() { return G.word.split(" ").map(w => letterCount(w)).join(" · "); }
+function updatePattern() {
+  const old = document.querySelector("#panel .pattern");
+  if (old) old.replaceWith(patternEl());
+}
+function submitGuess() {
+  const inp = $("guess");
+  if (!inp) return;
+  const t = inp.value.trim();
+  if (!t) return;
+  if (norm(t) === norm(G.word)) {
+    if (netOn() && !NETG.host) { netSend({k: "req", act: "found", text: t}); return; }
+    reveal({by: "found"});
+  } else {
+    G.msg = isClose(t, G.word) ? s("close") : s("wrong");
+    SFX.wrong();
+    if (netOn()) { if (NETG.host) G.tries = [...(G.tries || []), t.slice(0, 30)]; else netSend({k: "req", act: "try", text: t.slice(0, 30)}); render(); }
+    renderFeedback();
+    inp.value = "";
+  }
+}
+function catOf(w) {
+  const data = WORDS();
+  return Object.keys(data).find(c => Object.values(data[c]).some(list => list.includes(w))) || "";
+}
+function makeHint(w) {
+  if (CFG.cat === "Au hasard") return s("hintCat", catLabel(catOf(w)));
+  return s("hintStart", [...w][0].toUpperCase());
+}
+function renderFeedback() {
+  const f = $("feedback"), h = $("hint");
+  if (f) f.textContent = G.msg || "";
+  if (h) h.textContent = G.hint || "";
+}
+function undoStroke() {
+  if (!G || G.phase !== "draw" || !strokes.length || !isDrawerMe()) return;
+  if (netOn()) netSend({k: "undo"});
+  strokes.pop();
+  redraw();
+}
+
+/* ---------- Dessin ---------- */
+function pt(e) {
+  const r = cv.getBoundingClientRect();
+  return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
+}
+function redraw() {
+  if (!ctx) return;
+  const list = cur ? [...strokes, cur] : strokes;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, cssW, cssH);
+  for (const st of list) {
+    const pts = st.pts;
+    if (!pts.length) continue;
+    ctx.strokeStyle = st.c; ctx.fillStyle = st.c;
+    ctx.lineWidth = st.w * cssW / 400;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => { i ? ctx.lineTo(x * cssW, y * cssH) : ctx.moveTo(x * cssW, y * cssH); });
+    if (pts.length === 1) { ctx.arc(pts[0][0] * cssW, pts[0][1] * cssH, st.w * cssW / 800, 0, Math.PI * 2); ctx.fill(); }
+    else ctx.stroke();
+  }
+}
+// Taille figée au lancement : le clavier ne doit pas redimensionner la zone de dessin.
+function sizeStage() {
+  const top = document.querySelector("#game .top").offsetHeight;
+  const panel = $("panel").offsetHeight || 152;
+  let w = window.innerWidth - 16;
+  let h = Math.max(200, window.innerHeight - top - panel - 16);
+  if (netOn()) {
+    if (isDrawerMe()) netSend({k: "ar", ar: w / h, d: true});
+    else if (netAr) { const aw = Math.min(w, h * netAr); w = aw; h = aw / netAr; }
+  }
+  const stage = $("stage");
+  stage.style.width = w + "px";
+  stage.style.height = h + "px";
+  dpr = window.devicePixelRatio || 1;
+  cssW = w; cssH = h;
+  cv.width = Math.round(cssW * dpr);
+  cv.height = Math.round(cssH * dpr);
+  redraw();
+}
+function setupCanvas() {
+  cv = $("cv");
+  ctx = cv.getContext("2d");
+  cv.addEventListener("pointerdown", e => {
+    if (!G || G.phase !== "draw" || !isDrawerMe()) return;
+    cv.setPointerCapture(e.pointerId);
+    cur = {c: tool === "eraser" ? "#ffffff" : color, w: tool === "eraser" ? eraserSize : size, pts: [pt(e)]};
+    if (netOn()) { cur.id = netNextId(); netStroke({k: "sb", id: cur.id, c: cur.c, w: cur.w, p: cur.pts[0]}); }
+    redraw();
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!cur) return;
+    cur.pts.push(pt(e));
+    if (netOn()) netStroke({k: "sp", id: cur.id, p: cur.pts[cur.pts.length - 1]});
+    redraw();
+  });
+  const end = e => {
+    if (!cur) return;
+    cur.pts.push(pt(e));
+    if (netOn()) netStroke({k: "se", id: cur.id});
+    strokes.push(cur);
+    cur = null;
+    redraw();
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", end);
+}
+window.addEventListener("orientationchange", () => { if (G && !$("game").classList.contains("hidden")) sizeStage(); });
+
+/* ---------- Jeu numéro 2 : un dessin en trois parties, à deux ---------- */
+const C2 = {theme: "Animaux", time: 30, orient: "h", mode: "local"};
+const THEMES2 = ["Animaux", "Navires", "Ustensiles", "Voitures", "Vêtements"];
+const MORE2 = ["Instruments", "Chaussures", "Fleurs", "Arbres", "Oiseaux", "Champignons"];
+const TIMES2 = [30, 60, 90];
+const ORIENT2 = [
+  {id: "h", fr: "Horizontal", en: "Horizontal"},
+  {id: "v", fr: "Vertical", en: "Vertical"}
+];
+const t2 = (fr, en) => LANG === "en" ? en : fr;
+const timeLabel2 = sec => sec === 60 ? "1 minute" : sec === 90 ? t2("1 minute 30", "1 minute 30") : `${sec} ${t2("secondes", "seconds")}`;
+let G2 = null, cv2, ctx2, cur2 = null, dpr2 = 1, cssW2 = 1, cssH2 = 1;
+const lay2 = document.createElement("canvas"), lctx2 = lay2.getContext("2d"); // calque des traits : la gomme n'efface que les traits
+const drawer2 = () => G2.turn % 2 === 0 ? 0 : 1;
+const menuBar2 = () => el("div", {class: "ov-bar"}, el("button", {class: "pill", onclick: goMenu2}, s("menu")));
+
+// ----- Mode deux téléphones : une salle en direct (capacité room) -----
+// Le joueur qui dessine envoie ses traits à la fin de sa partie ; l'autre téléphone les reçoit.
+let NET2 = null, ROLE2 = null, ME2 = 0, PARTNER2 = null, NET_READY2 = false, NET_IV2 = null, ROOM_CODE2 = "", NET_ERR2 = "";
+const isMine2 = () => !NET2 || drawer2() === ME2;
+const netSend2 = m => { if (NET2) { try { NET2.emit("g2", m); } catch (e) {} } };
+const helloName2 = () => ($("m2n2").value || "").trim().slice(0, 20) || t2("Joueur 2", "Player 2");
+async function netConnect2(code, role) {
+  NET_ERR2 = "";
+  try {
+    const r = await mkRoom("dd2-" + code, role === "host");
+    r.on("g2", onNet2);
+    NET2 = r; ROLE2 = role; ME2 = role === "host" ? 0 : 1; ROOM_CODE2 = code; G2 = null;
+    if (role === "guest") {
+      netSend2({k: "hello", name: helloName2()});
+      NET_IV2 = setInterval(() => { if (!G2) netSend2({k: "hello", name: helloName2()}); }, 1500);
+    }
+  } catch (e) {
+    NET_ERR2 = t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code.");
+  }
+  renderNet2();
+}
+function onNet2(m) {
+  if (!m || !m.k) return;
+  if (m.k === "hello" && ROLE2 === "host") { PARTNER2 = m.name || null; NET_READY2 = true; renderNet2(); }
+  else if (m.k === "start" && ROLE2 === "guest" && !G2) {
+    clearInterval(NET_IV2);
+    G2 = {names: m.names, theme: m.theme, time: m.time, orient: m.orient, turn: 0, turns: [[], [], []], phase: "handover"};
+    $("menu2").classList.add("hidden"); $("game2").classList.remove("hidden");
+    sizeStage2(); setPhase2("handover");
+  }
+  else if (m.k === "go" && G2 && m.turn === G2.turn && G2.phase === "handover" && !isMine2()) setPhase2("draw");
+  else if (m.k === "turn" && G2 && m.turn === G2.turn) {
+    G2.turns[m.turn] = m.strokes;
+    if (m.turn < 2) { G2.turn += 1; setPhase2("handover"); } else setPhase2("reveal");
+  }
+}
+function handover2Net() {
+  SFX.swoosh();
+  const ov = $("overlay"), mine = isMine2(), who = G2.names[drawer2()];
+  ov.replaceChildren(); ov.className = "inv";
+  ov.append(
+    el("div", {class: "ov-top"},
+      el("div", {class: "ov-phone rise", html: svg("phone")}),
+      el("div", {class: "kicker rise d1"}, t2(`Partie ${G2.turn + 1} sur 3`, `Part ${G2.turn + 1} of 3`)),
+      el("h2", {class: "ov-title rise d1"}, mine ? t2("C’est ton tour.", "Your turn.") : t2(`${who} dessine.`, `${who} is drawing.`)),
+      el("p", {class: "ov-sub rise d2"}, mine ? t2("Ton ami ne voit pas ta partie.", "Your friend can’t see your part.") : t2("Attends ton tour.", "Wait for your turn."))));
+  if (mine) ov.append(el("button", {class: "ov-cta rise d2", onclick: () => { netSend2({k: "go", turn: G2.turn}); setPhase2("draw"); }}, t2("C’est parti", "Let’s go"), el("span", {html: svg("arrow")})));
+}
+function renderNet2() {
+  $("m2Mode").replaceChildren(...[["local", t2("Sur ce téléphone", "On this phone")], ["online", t2("Deux téléphones", "Two phones")]].map(([id, lab]) => el("li", {},
+    el("button", {class: "crow" + (C2.mode === id ? " on" : ""), onclick: () => { C2.mode = id; renderNet2(); }}, lab))));
+  const box = $("m2Net"), online = C2.mode === "online";
+  const canStart = !online || (NET2 && ROLE2 === "host" && NET_READY2);
+  $("m2Start").classList.toggle("hidden", !canStart);
+  if (!online) { box.replaceChildren(); return; }
+  const status = !ROLE2 ? null : ROLE2 === "host"
+    ? (NET_READY2 ? t2(`${PARTNER2 || "Ton ami"} est là. Tu peux lancer.`, `${PARTNER2 || "Your friend"} is here. You can start.`) : t2(`Code : ${ROOM_CODE2}. En attente de ton ami…`, `Code: ${ROOM_CODE2}. Waiting for your friend…`))
+    : t2("Connecté. En attente que l’hôte lance la partie.", "Connected. Waiting for the host to start.");
+  box.replaceChildren(
+    ...(ROLE2 ? [] : [
+      el("input", {class: "field", id: "m2code", maxlength: "4", placeholder: t2("Code de la salle", "Room code"), autocomplete: "off"}),
+      el("button", {class: "crow", onclick: () => netConnect2(Math.random().toString(36).slice(2, 6).toUpperCase(), "host")}, t2("Créer une salle", "Create a room")),
+      el("button", {class: "crow", onclick: () => { const v = ($("m2code").value || "").trim().toUpperCase(); if (v) netConnect2(v, "guest"); }}, t2("Rejoindre", "Join"))]),
+    ...(status ? [el("div", {class: "kicker"}, status)] : []),
+    ...(NET_ERR2 ? [el("div", {class: "kicker"}, NET_ERR2)] : []));
+}
+function buildMenu2() {
+  const set = (id, txt) => { const n = $(id); if (n) n.textContent = txt; };
+  set("m2Kick", s("kicker")); set("m2Theme", t2("Thème", "Theme")); set("m2Time", t2("Temps par partie", "Time per turn"));
+  set("m2Orient", t2("Découpage", "Layout")); set("m2Who", s("who")); set("m2Color", s("colorH"));
+  set("m2l1", t2("Dessine en premier", "Draws first")); set("m2l2", t2("Dessine ensuite", "Draws next"));
+  set("m2StartTxt", s("start")); set("back2h", s("back"));
+  set("m2w1", t2("Trait pour", "Line by")); set("m2w2", t2("trait", "Line"));
+  const row2 = (c, i) => el("li", {},
+    el("button", {class: "crow" + (C2.theme === c ? " on" : ""), onclick: () => { C2.theme = c; buildMenu2(); }},
+      el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)));
+  $("m2Themes").replaceChildren(...THEMES2.map(row2));
+  const extraOn = MORE2.includes(C2.theme);
+  $("m2More").replaceChildren(el("span", {}, extraOn ? s("moreCat", catLabel(C2.theme)) : s("more")), el("span", {html: svg("arrow")}));
+  $("themeList2").replaceChildren(...MORE2.map((c, i) => el("li", {},
+    el("button", {class: "crow" + (C2.theme === c ? " on" : ""), onclick: () => { C2.theme = c; showThemes2(false); buildMenu2(); }},
+      el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)))));
+  set("themes2H", s("themesH")); set("themes2Back", s("backBtn"));
+  set("m2Cols", t2("3 colonnes", "3 columns"));
+  $("m2Times").replaceChildren(...TIMES2.map(sec => el("button", {class: "crow" + (C2.time === sec ? " on" : ""), onclick: () => { C2.time = sec; buildMenu2(); }}, timeLabel2(sec))));
+  $("m2Orients").replaceChildren(...ORIENT2.map(o => el("button", {class: "crow" + (C2.orient === o.id ? " on" : ""), onclick: () => { C2.orient = o.id; buildMenu2(); }}, t2(o.fr, o.en))));
+  $("m2Dots").replaceChildren(...THEMES.map(t => el("button", {
+    class: "bgdot" + (t.id === savedTheme() ? " on" : ""), title: lg(t.name), "aria-label": lg(t.name),
+    style: `background:${t.bg}`,
+    onclick: () => { applyTheme(t.id); buildMenu2(); renderHome(); }
+  })));
+  $("m2Sound").replaceChildren(el("span", {class: "lbl"}, s("sound")), el("div", {class: "opts"},
+    el("button", {class: "opt" + (SOUND ? " on" : ""), "aria-label": s("soundOn"), onclick: () => { setSound(true); buildMenu2(); }, html: svg("check")}),
+    el("button", {class: "opt" + (!SOUND ? " on" : ""), "aria-label": s("soundOff"), onclick: () => { setSound(false); buildMenu2(); }, html: svg("x")})));
+}
+$("m2More").onclick = () => showThemes2(true);
+$("themes2Back").onclick = () => showThemes2(false);
+function showThemes2(v) {
+  $("themes2").classList.toggle("hidden", !v);
+  if (v) buildMenu2();
+}
+function openGame2() { $("home").classList.add("hidden"); buildMenu2(); $("menu2").classList.remove("hidden"); }
+function goMenu2() {
+  stopTimer();
+  if (NET2) { try { NET2.leave(); } catch (e) {} NET2 = null; ROLE2 = null; PARTNER2 = null; NET_READY2 = false; clearInterval(NET_IV2); G2 = null; }
+  $("overlay").classList.add("hidden");
+  $("game2").classList.add("hidden");
+  $("menu2").classList.remove("hidden");
+  buildMenu2();
+}
+$("back2h").onclick = goHome;
+$("menu2Btn").onclick = goMenu2;
+$("m2Start").onclick = () => {
+  const en = LANG === "en";
+  const n1 = $("m2n1").value.trim().slice(0, 20) || (en ? "Player 1" : "Joueur 1");
+  const n2 = $("m2n2").value.trim().slice(0, 20) || (en ? "Player 2" : "Joueur 2");
+  const theme = C2.theme;
+  G = null;
+  G2 = {names: [n1, NET2 && PARTNER2 ? PARTNER2 : n2], theme, time: C2.time, orient: C2.orient, turn: 0, turns: [[], [], []], phase: "handover"};
+  netSend2({k: "start", names: G2.names, theme, time: C2.time, orient: C2.orient});
+  $("menu2").classList.add("hidden");
+  $("game2").classList.remove("hidden");
+  sizeStage2();
+  setPhase2("handover");
+};
+
+// Phases : passage du téléphone, dessin chronomé, puis découverte des trois parties.
+function setPhase2(p) {
+  G2.phase = p; cur2 = null; stopTimer();
+  const ov = $("overlay");
+  if (p === "handover" && NET2) {
+    handover2Net();
+  } else if (p === "handover") {
+    SFX.swoosh();
+    const who = G2.names[drawer2()];
+    ov.replaceChildren(); ov.className = "inv";
+    ov.append(menuBar2(),
+      el("div", {class: "ov-top"},
+        el("div", {class: "ov-phone rise", html: svg("phone")}),
+        el("div", {class: "kicker rise d1"}, t2(`Partie ${G2.turn + 1} sur 3`, `Part ${G2.turn + 1} of 3`)),
+        el("h2", {class: "ov-title rise d1"}, t2(`Le téléphone passe à ${who}.`, `Pass the phone to ${who}.`)),
+        el("p", {class: "ov-sub rise d2"}, t2("Tu ne vois que ta partie. Le reste est caché.", "You only see your part. The rest is hidden."))),
+      el("button", {class: "ov-cta rise d2", onclick: () => setPhase2("draw")}, t2("C’est parti", "Let’s go"), el("span", {html: svg("arrow")})));
+  } else {
+    ov.className = "hidden";
+    if (p === "draw") { SFX.start(); startTimer(G2.time, endTurn2); }
+    else if (p === "reveal") startReveal2();
+  }
+  renderTop2(); renderPanel2(); renderFoot2(); renderNames2(); sizeStage2();
+}
+function endTurn2() {
+  if (!G2 || G2.phase !== "draw" || !isMine2()) return;
+  netSend2({k: "turn", turn: G2.turn, strokes: G2.turns[G2.turn]});
+  if (G2.turn < 2) { G2.turn += 1; setPhase2("handover"); }
+  else setPhase2("reveal");
+}
+function renderTop2() {
+  $("menu2Btn").textContent = s("menu");
+  $("info2").replaceChildren(
+    el("div", {class: "t2Theme"}, catLabel(G2.theme)),
+    el("div", {class: "kicker"}, t2(`Partie ${Math.min(G2.turn + 1, 3)}/3`, `Part ${Math.min(G2.turn + 1, 3)}/3`)));
+}
+// Mots de fin de partie, tirés au hasard.
+const PRAISE2 = [
+  {fr: "Incroyable !", en: "Incredible!"},
+  {fr: "Magnifique !", en: "Magnificent!"},
+  {fr: "Superbe !", en: "Superb!"},
+  {fr: "C’est trop beau", en: "So beautiful"},
+  {fr: "Époustouflant", en: "Breathtaking"},
+  {fr: "Waouh !", en: "Wow!"},
+  {fr: "Quelle dinguerie !", en: "What a masterpiece!"},
+  {fr: "Chef-d’œuvre !", en: "Masterpiece!"}
+];
+function renderPanel2() {
+  const pn = $("panel2");
+  pn.replaceChildren();
+  if (G2.phase === "draw" && !isMine2()) {
+    pn.append(el("div", {class: "wordline"}, el("span", {class: "kicker"}, t2(`${G2.names[drawer2()]} dessine`, `${G2.names[drawer2()]} is drawing`))));
+  } else if (G2.phase === "draw") {
+    pn.append(
+      el("div", {class: "wordline"},
+        el("span", {class: "kicker"}, t2(`Ta partie · ${G2.turn + 1}/3`, `Your part · ${G2.turn + 1}/3`)),
+        el("button", {class: "finish inv", onclick: endTurn2}, t2("J’ai fini", "I’m done"), el("span", {html: svg("check")}))),
+      toolsRow2(),
+      ...(sizeOpen ? [sizeBar()] : []),
+      ...(colorOpen ? [paletteRow2()] : []));
+  } else if (G2.phase === "reveal") {
+    pn.append(
+      el("div", {class: "wordline"},
+        el("span", {class: "kicker"}, t2(PRAISE2[G2.praise ?? 0].fr, PRAISE2[G2.praise ?? 0].en)),
+        el("button", {class: "finish inv", onclick: goMenu2}, t2("Nouvelle partie", "New game"), el("span", {html: svg("arrow")}))),
+    );
+  }
+}
+// Animation de révélation : le dessin se trace tout seul, puis confettis et son.
+function startReveal2() {
+  const stage = $("stage2");
+  stage.classList.remove("pop"); void stage.offsetWidth; stage.classList.add("pop");
+  G2.revealP = 0;
+  G2.praise = Math.floor(Math.random() * PRAISE2.length);
+  const t0 = performance.now(), dur = 2600;
+  const step = now => {
+    if (!G2 || G2.phase !== "reveal") return;
+    const k = Math.min(1, (now - t0) / dur);
+    G2.revealP = 1 - (1 - k) * (1 - k);
+    redraw2();
+    if (k < 1) requestAnimationFrame(step);
+    else { G2.revealP = 1; redraw2(); SFX.reveal(); confetti(); }
+  };
+  requestAnimationFrame(step);
+}
+// Prénoms au-dessus des colonnes (ou à gauche des lignes), sans texte ni phrase.
+function renderNames2() {
+  const box = $("names2"), rev = G2.phase === "reveal";
+  $("panel2").style.height = rev ? "auto" : "";
+  $("sheet2").className = G2.orient === "h" ? "h" : "v";
+  box.className = rev ? "on" : "";
+  box.replaceChildren(...(rev ? [0, 1, 2].map(i => el("span", {}, G2.names[i % 2])) : []));
+}
+function renderFoot2() {
+  const f = $("foot2");
+  if (G2.phase !== "reveal") { f.classList.add("hidden"); return; }
+  f.classList.remove("hidden");
+  f.replaceChildren(
+    el("button", {class: "inv foot2Main", onclick: downloadDrawing2},
+      el("span", {}, t2("Télécharger le dessin", "Download the drawing")), el("span", {html: svg("download")})));
+}
+function shareDrawing2() {
+  cv2.toBlob(blob => {
+    if (!blob) return;
+    const name = `dessin-${Date.now()}.png`;
+    const file = new File([blob], name, {type: "image/png"});
+    if (navigator.share && (!navigator.canShare || navigator.canShare({files: [file]}))) {
+      navigator.share({files: [file], title: "Devine-moi ça", text: t2("Regarde notre dessin !", "Look at our drawing!")})
+        .catch(e => { if (e && e.name !== "AbortError") downloadDrawing2(); });
+    } else downloadDrawing2();
+  }, "image/png");
+}
+function downloadDrawing2() {
+  cv2.toBlob(blob => {
+    if (!blob) return;
+    const name = `dessin-${Date.now()}.png`;
+    const fallback = () => {
+      const a = el("a", {href: URL.createObjectURL(blob), download: name});
+      document.body.append(a); a.click(); a.remove();
+    };
+    fallback();
+  }, "image/png");
+}
+function toolsRow2() {
+  const swatches = el("div", {class: "btns"},
+    el("button", {class: "colorBtn" + (colorOpen ? " on" : ""), title: s("colour"), "aria-label": s("colour"),
+      onclick: () => { colorOpen = !colorOpen; sizeOpen = false; renderPanel2(); }},
+      recent.map(c => el("span", {class: "colorDot", style: `background:${c}`})),
+      el("span", {class: "chev", html: svg("chev")})));
+  const btns = el("div", {class: "btns"},
+    el("button", {class: "ico" + (tool === "pen" ? " on" : ""), title: s("pen"), "aria-label": s("pen"),
+      onclick: () => { colorOpen = false; if (tool === "pen") sizeOpen = !sizeOpen; else { tool = "pen"; sizeOpen = false; } renderPanel2(); }, html: svg("pen")}),
+    el("button", {class: "ico" + (tool === "eraser" ? " on" : ""), title: s("eraser"), "aria-label": s("eraser"),
+      onclick: () => { colorOpen = false; if (tool === "eraser") sizeOpen = !sizeOpen; else { tool = "eraser"; sizeOpen = false; } renderPanel2(); }, html: svg("eraser")}),
+    el("button", {class: "ico", title: s("undo"), "aria-label": s("undo"), onclick: undo2, html: svg("undo")}));
+  return el("div", {class: "tools"}, swatches, btns);
+}
+function paletteRow2() {
+  return el("div", {class: "palette"}, COLORS.map(c => el("button", {
+    class: "sw" + (c === color ? " on" : ""), style: `background:${c}`, "aria-label": s("colour"),
+    onclick: () => { pickColor(c); tool = "pen"; colorOpen = false; renderPanel2(); }
+  })));
+}
+function undo2() {
+  if (!G2 || G2.phase !== "draw" || !G2.turns[G2.turn].length) return;
+  G2.turns[G2.turn].pop();
+  redraw2();
+}
+
+// Zones : trois parties, en colonnes (horizontal) ou en rangées (vertical).
+function zoneOf2(i) {
+  return G2.orient === "h" ? {x0: i / 3, y0: 0, x1: (i + 1) / 3, y1: 1} : {x0: 0, y0: i / 3, x1: 1, y1: (i + 1) / 3};
+}
+// Dessine les traits sur le calque ; la gomme efface seulement le calque, pas le fond ni les séparations.
+function composeLayer2(fn) {
+  const main = ctx2;
+  lctx2.setTransform(1, 0, 0, 1, 0, 0);
+  lctx2.clearRect(0, 0, lay2.width, lay2.height);
+  lctx2.setTransform(dpr2, 0, 0, dpr2, 0, 0);
+  ctx2 = lctx2;
+  try { fn(); } finally { ctx2 = main; }
+  main.save();
+  main.globalCompositeOperation = "source-over";
+  main.setTransform(1, 0, 0, 1, 0, 0);
+  main.drawImage(lay2, 0, 0);
+  main.restore();
+}
+function drawStroke2(st) {
+  const pts = st.pts;
+  if (!pts.length) return;
+  ctx2.globalCompositeOperation = st.erase ? "destination-out" : "source-over";
+  ctx2.strokeStyle = st.c; ctx2.fillStyle = st.c;
+  ctx2.lineWidth = st.w * cssW2 / 400;
+  ctx2.lineCap = "round"; ctx2.lineJoin = "round";
+  if (pts.length === 1) {
+    ctx2.beginPath(); ctx2.arc(pts[0][0] * cssW2, pts[0][1] * cssH2, st.w * cssW2 / 800, 0, Math.PI * 2); ctx2.fill();
+    return;
+  }
+  ctx2.beginPath();
+  pts.forEach(([x, y], i) => { i ? ctx2.lineTo(x * cssW2, y * cssH2) : ctx2.moveTo(x * cssW2, y * cssH2); });
+  ctx2.stroke();
+}
+function redraw2() {
+  if (!ctx2 || !G2) return;
+  ctx2.setTransform(dpr2, 0, 0, dpr2, 0, 0);
+  ctx2.fillStyle = "#ffffff";
+  ctx2.fillRect(0, 0, cssW2, cssH2);
+  if (G2.phase === "draw") {
+    const active = G2.turn, za = zoneOf2(active);
+    // Les autres parties sont teintées : on ne les voit pas, on ne dessine pas dessus pour les voir.
+    for (let i = 0; i < 3; i++) if (i !== active) {
+      const z = zoneOf2(i);
+      ctx2.fillStyle = "#f1f0ea";
+      ctx2.fillRect(z.x0 * cssW2, z.y0 * cssH2, (z.x1 - z.x0) * cssW2, (z.y1 - z.y0) * cssH2);
+    }
+    drawDividers2();
+    // Les traits de la personne précédente ne sont visibles que dans ta partie (ceux qui dépassent).
+    ctx2.save();
+    ctx2.beginPath();
+    const bz = bleedRect2(za);
+    ctx2.rect(bz.x0 * cssW2, bz.y0 * cssH2, (bz.x1 - bz.x0) * cssW2, (bz.y1 - bz.y0) * cssH2);
+    ctx2.clip();
+    ctx2.globalAlpha = 0.35; // traits précédents : en fondu, pour continuer sans les confondre
+    for (let k = 0; k < active; k++) G2.turns[k].forEach(drawStroke2);
+    ctx2.globalAlpha = 1;
+    ctx2.restore();
+    composeLayer2(() => { G2.turns[active].forEach(drawStroke2); if (cur2) drawStroke2(cur2); });
+    ctx2.font = "bold 13px Helvetica, Arial, sans-serif";
+    ctx2.fillStyle = "#111111";
+    ctx2.textAlign = "left"; ctx2.textBaseline = "top";
+    for (let i = 0; i < 3; i++) { const z = zoneOf2(i); ctx2.fillText(String(i + 1), z.x0 * cssW2 + 8, z.y0 * cssH2 + 8); }
+    ctx2.textBaseline = "alphabetic";
+  } else {
+    drawReveal2(G2.revealP ?? 1);
+  }
+}
+// Révélation : le dessin complet, sans séparations ni prénoms sur la feuille. p = avancement 0..1.
+function drawReveal2(p) {
+  ctx2.setTransform(dpr2, 0, 0, dpr2, 0, 0);
+  ctx2.fillStyle = "#ffffff";
+  ctx2.fillRect(0, 0, cssW2, cssH2);
+  const all = G2.turns.flat();
+  const total = all.length * p;
+  composeLayer2(() => {
+    for (let i = 0; i < all.length && i < Math.ceil(total); i++) {
+      const st = all[i];
+      const frac = Math.min(1, total - i);
+      const n = Math.max(1, Math.ceil(st.pts.length * frac));
+      drawStroke2(n >= st.pts.length ? st : {...st, pts: st.pts.slice(0, n)});
+    }
+  });
+}
+function drawDividers2() {
+  ctx2.save();
+  ctx2.strokeStyle = "#111111"; ctx2.lineWidth = 1.5; ctx2.setLineDash([6, 5]);
+  ctx2.beginPath();
+  for (const f of [1 / 3, 2 / 3]) {
+    if (G2.orient === "h") { ctx2.moveTo(f * cssW2, 0); ctx2.lineTo(f * cssW2, cssH2); }
+    else { ctx2.moveTo(0, f * cssH2); ctx2.lineTo(cssW2, f * cssH2); }
+  }
+  ctx2.stroke();
+  ctx2.restore();
+}
+// Petit débord autorisé : la personne suivante voit ce trait pour continuer dans sa partie.
+const BLEED2 = 0.025;
+function bleedRect2(z) {
+  const mx = BLEED2 + 2 / cssW2, my = BLEED2 + 2 / cssH2; // 2 px de plus
+  return {x0: z.x0 - mx, y0: z.y0 - my, x1: z.x1 + mx, y1: z.y1 + my};
+}
+function inZone2(p) {
+  const z = bleedRect2(zoneOf2(G2.turn));
+  return p[0] >= z.x0 && p[0] <= z.x1 && p[1] >= z.y0 && p[1] <= z.y1;
+}
+function pt2(e) {
+  const r = cv2.getBoundingClientRect();
+  return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
+}
+function sizeStage2() {
+  const top = document.querySelector("#game2 .top").offsetHeight;
+  const rev = G2.phase === "reveal";
+  const vert = rev && G2.orient === "v";
+  const w = window.innerWidth - 16 - (vert ? 84 : 0);
+  const foot = $("foot2");
+  const h = Math.max(200, window.innerHeight - top - $("panel2").offsetHeight - (foot.classList.contains("hidden") ? 0 : foot.offsetHeight) - (rev && !vert ? 34 : 0) - 16);
+  const st = $("stage2");
+  st.style.width = w + "px"; st.style.height = h + "px";
+  dpr2 = window.devicePixelRatio || 1;
+  cssW2 = w; cssH2 = h;
+  cv2.width = Math.round(w * dpr2); cv2.height = Math.round(h * dpr2);
+  lay2.width = cv2.width; lay2.height = cv2.height;
+  redraw2();
+}
+function setupCanvas2() {
+  cv2 = $("cv2"); ctx2 = cv2.getContext("2d");
+  cv2.addEventListener("pointerdown", e => {
+    if (!G2 || G2.phase !== "draw" || !isMine2()) return;
+    const p0 = pt2(e);
+    if (!inZone2(p0)) return; // on ne dessine que dans sa propre partie
+    cv2.setPointerCapture(e.pointerId);
+    cur2 = {c: color, erase: tool === "eraser", w: tool === "eraser" ? eraserSize : size, pts: [p0]};
+    redraw2();
+  });
+  cv2.addEventListener("pointermove", e => {
+    if (!cur2) return;
+    const p = pt2(e);
+    if (inZone2(p)) { cur2.pts.push(p); redraw2(); }
+  });
+  const end = e => {
+    if (!cur2) return;
+    const p = pt2(e);
+    if (inZone2(p)) cur2.pts.push(p);
+    G2.turns[G2.turn].push(cur2);
+    cur2 = null;
+    redraw2();
+  };
+  cv2.addEventListener("pointerup", end);
+  cv2.addEventListener("pointercancel", end);
+}
+setupCanvas2();
+
+/* ---------- Salon : créer ou rejoindre une partie avec un code (capacité room) ---------- */
+const LB = {code: null, role: null, room: null, myId: "", players: [], last: "", lastT: 0, iv: null};
+function lbInfo(msg) { LB.status = msg; }
+function lbNameOrWarn() {
+  const n = $("lbName").value.trim().slice(0, 20);
+  if (!n) { lbInfo(t2("Écris ton nom d’abord.", "Write your name first.")); $("lbName").focus(); return null; }
+  try { localStorage.setItem("dd_name", n); } catch (e) {}
+  return n;
+}
+function lbRender() {
+  if (!LB.code) { lbInfo(t2("Écris ton nom, puis crée une partie ou rejoins-en une.", "Write your name, then create or join a game.")); return; }
+  const head = LB.role === "host" ? `${t2("Code", "Code")} ${LB.code}` : `${t2("Partie", "Game")} ${LB.code}`;
+  const list = LB.players.length ? LB.players.map(p => p.name).join(" · ") : "…";
+  const joined = LB.last && Date.now() - LB.lastT < 3000 ? ` — ${LB.last} ${t2("a rejoint", "joined")}` : "";
+  lbInfo("");
+  if (LB.onChange) LB.onChange();
+}
+async function lbConnect(code, role, name) {
+  if (LB.room) { try { LB.room.leave(); } catch (e) {} }
+  clearInterval(LB.iv);
+  Object.assign(LB, {code, role, room: null, myId: "", players: [], last: "", lastT: 0, iv: null});
+  try {
+    const r = await mkRoom("dd-" + code, role === "host");
+    r.on("lobby", lbOnMsg);
+    r.on("game", netOnMsg);
+    LB.room = r;
+    if (role === "host") LB.players = [{id: "host", name}];
+    else {
+      const id = Math.random().toString(36).slice(2, 10);
+      LB.myId = id;
+      const send = () => { if (!LB.players.some(p => p.id === id)) r.emit("lobby", {k: "join", id, name}); };
+      send();
+      LB.iv = setInterval(send, 1200);
+    }
+    lbRender();
+  } catch (e) {
+    if (role === "guest") LB.code = null;
+    lbInfo(role === "host"
+      ? t2("Impossible de créer la partie en ligne. Vérifie ta connexion internet.", "Couldn't create the online game. Check your internet connection.")
+      : t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code."));
+  }
+}
+// Salon en pair à pair (PeerJS, gratuit, sans compte). L'hôte a l'identifiant du salon ;
+// les invités se connectent à lui. Interface : on(sujet, fn), emit(sujet, données), leave().
+function mkRoom(id, isHost) {
+  return new Promise((resolve, reject) => {
+    const handlers = {}, conns = [];
+    let conn = null;
+    const dispatch = (topic, data) => (handlers[topic] || []).forEach(f => { try { f(data); } catch (e) {} });
+    const wire = c => c.on("data", m => { if (m && m.topic) dispatch(m.topic, m.data); });
+    const peer = isHost ? new Peer(id) : new Peer();
+    const room = {
+      on: (topic, fn) => { (handlers[topic] = handlers[topic] || []).push(fn); },
+      emit: (topic, data) => {
+        const msg = {topic, data};
+        if (isHost) conns.forEach(c => { if (c.open) c.send(msg); });
+        else if (conn && conn.open) conn.send(msg);
+      },
+      leave: () => { try { peer.destroy(); } catch (e) {} }
+    };
+    peer.on("error", err => reject(err));
+    if (isHost) {
+      peer.on("open", () => resolve(room));
+      peer.on("connection", c => { conns.push(c); wire(c); });
+    } else {
+      peer.on("open", () => {
+        conn = peer.connect(id, {reliable: true});
+        wire(conn);
+        conn.on("open", () => resolve(room));
+        conn.on("error", err => reject(err));
+      });
+    }
+  });
+}
+function lbOnMsg(m) {
+  if (!m || !LB.room) return;
+  if (m.k === "join" && LB.role === "host") {
+    if (!LB.players.some(p => p.id === m.id)) {
+      LB.players.push({id: m.id, name: m.name});
+      LB.last = m.name; LB.lastT = Date.now();
+      setTimeout(lbRender, 3100);
+    }
+    LB.room.emit("lobby", {k: "roster", players: LB.players});
+    lbRender();
+  } else if (m.k === "roster" && LB.role === "guest") {
+    LB.players = m.players || [];
+    if (LB.players.some(p => p.id === LB.myId)) clearInterval(LB.iv);
+    lbRender();
+  } else if (m.k === "start" && LB.role === "guest") {
+    netGuestStart(m.settings, m.names);
+  }
+}
+const gSaved = () => { try { return localStorage.getItem("dd_name") || ""; } catch (e) { return ""; } };
+const gSave = n => { try { localStorage.setItem("dd_name", n); } catch (e) {} };
+const newCode = () => Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, "X");
+let GATE = "menu";
+LB.onChange = () => gateRender();
+function lbLeave() {
+  if (LB.room) { try { LB.room.leave(); } catch (e) {} }
+  clearInterval(LB.iv);
+  Object.assign(LB, {code: null, role: null, room: null, players: [], started: false, settings: null, status: ""});
+}
+function gateOpen() { GATE = LB.code ? LB.role : "menu"; gateRender(); $("gate").classList.remove("hidden"); }
+function gateBack() {
+  if (GATE === "menu") { $("gate").classList.add("hidden"); goHome(); return; }
+  lbLeave(); GATE = "menu"; gateRender();
+}
+function gateLocal() { $("gate").classList.add("hidden"); setNamesVisible(true); goMenu(); }
+async function gateConnect(code, role, name) {
+  gSave(name);
+  await lbConnect(code, role, name);
+  if (LB.code) GATE = role;
+  gateRender();
+}
+// Compte à rebours : le rectangle reste fixe ; seul le chiffre apparaît (fondu d'entrée), à la seconde.
+function countdown2(then) {
+  const d = document.createElement("div");
+  d.className = "cdOv";
+  d.style.cssText = "inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:75vw;height:25vh;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,18vw,120px);font-weight:800;letter-spacing:-.04em;pointer-events:none";
+  const t = document.createElement("span");
+  d.append(t);
+  document.body.append(d);
+  ["3", "2", "1", "GO !"].forEach((w, i) => setTimeout(() => {
+    t.textContent = w;
+    t.animate([{opacity: 0}, {opacity: 1}], {duration: 220, fill: "both"});
+    try { if (i < 3) SFX.tick(); else SFX.start(); } catch (e) {}
+  }, i * 1000));
+  setTimeout(() => { d.remove(); then(); }, 4000);
+}
+function gateRender() {
+  const g = $("gate");
+  const head = [
+    el("div", {class: "menuTop"}, el("button", {class: "pill", onclick: gateBack}, GATE === "menu" ? s("back") : s("backBtn"))),
+    el("div", {class: "poster"}, el("div", {class: "kicker"}, t2("Choisis ton mode", "Choose your mode")),
+      el("h1", {}, el("span", {class: "w1"}, t2("Mot", "Word to")), el("br", {}), el("span", {class: "w2"}, t2("à dessiner", "draw"))))
+  ];
+  let body;
+  if (GATE === "menu") {
+    body = [el("div", {class: "gateMenu"},
+      el("button", {class: "gateBtn", onclick: () => { GATE = "create"; LB.status = ""; gateRender(); }}, el("span", {html: svg("pen")}), t2("Créer une partie", "Create a game")),
+      el("button", {class: "gateBtn", onclick: () => { GATE = "join"; LB.status = ""; gateRender(); }}, el("span", {html: svg("send")}), t2("Rejoindre une partie", "Join a game")),
+      el("button", {class: "gateBtn", onclick: gateLocal}, el("span", {html: svg("phone")}), t2("Jouer sur ce téléphone", "Play on this phone")))];
+  } else if (GATE === "create") {
+    const name = el("input", {class: "field", maxlength: "20", placeholder: t2("Ton nom", "Your name"), autocomplete: "off", value: gSaved()});
+    body = [el("div", {class: "h2"}, t2("Ton nom", "Your name")), name,
+      el("button", {class: "inv ctaBig", onclick: () => {
+        const n = name.value.trim().slice(0, 20);
+        if (!n) { LB.status = t2("Écris ton nom.", "Write your name."); gateRender(); return; }
+        gateConnect(newCode(), "host", n);
+      }}, t2("Créer la partie", "Create the game"), el("span", {html: svg("arrow")}))];
+  } else if (GATE === "join") {
+    const code = el("input", {class: "field", maxlength: "4", placeholder: t2("Code", "Code"), autocomplete: "off", oninput: e => { e.target.value = e.target.value.toUpperCase(); }});
+    const name = el("input", {class: "field", maxlength: "20", placeholder: t2("Ton nom", "Your name"), autocomplete: "off", value: gSaved()});
+    body = [el("div", {class: "h2"}, t2("Code de la partie", "Game code")), code,
+      el("div", {class: "h2"}, t2("Ton nom", "Your name")), name,
+      el("button", {class: "inv ctaBig", onclick: () => {
+        const c = code.value.trim().toUpperCase(), n = name.value.trim().slice(0, 20);
+        if (c.length < 4) { LB.status = t2("Le code fait 4 caractères.", "The code has 4 characters."); gateRender(); return; }
+        if (!n) { LB.status = t2("Écris ton nom.", "Write your name."); gateRender(); return; }
+        gateConnect(c, "guest", n);
+      }}, t2("Rejoindre", "Join"), el("span", {html: svg("arrow")}))];
+  } else {
+    const names = LB.players.map(p => p.name);
+    body = [el("div", {class: "kicker"}, t2("Code de la partie", "Game code")), el("div", {class: "bigCode"}, LB.code || ""),
+      el("div", {class: "h2"}, t2("Joueurs", "Players")),
+      el("div", {class: "cats"}, ...names.map(n => el("div", {class: "crow"}, n)))];
+    if (LB.last && Date.now() - LB.lastT < 3000) body.push(el("div", {class: "kicker"}, `${LB.last} ${t2("a rejoint", "joined")}`));
+    if (GATE === "host") {
+      body.push(names.length < 2
+        ? el("div", {class: "kicker"}, t2("En attente de ton ami…", "Waiting for your friend…"))
+        : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); goMenu(); setNamesVisible(false); }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
+    } else if (LB.started && LB.settings) {
+      const d = DIFFS.find(x => x.id === LB.settings.diff);
+      body.push(el("div", {class: "kicker"}, `${catLabel(LB.settings.cat)} · ${lg(d.label)} · ${LB.settings.sec} s · ${LB.settings.rounds}`));
+    } else {
+      body.push(el("div", {class: "kicker"}, t2("En attente que l’hôte lance la partie.", "Waiting for the host to start.")));
+    }
+  }
+  const showStatus = true;
+  g.replaceChildren(...head, ...body, ...(showStatus && LB.status ? [el("div", {class: "kicker"}, LB.status)] : []));
+}
+// Démarrage en ligne : l'hôte envoie les réglages et les noms, puis le compte à rebours lance la partie.
+const startLocal1 = $("start").onclick;
+$("start").onclick = e => {
+  if (!LB.room || LB.role !== "host") return startLocal1(e);
+  const d = DIFFS.find(x => x.id === CFG.diff);
+  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: ROUNDS, sec: d.sec};
+  const names = LB.players.slice(0, 2).map(p => p.name);
+  try { LB.room.emit("lobby", {k: "start", settings, names}); } catch (err) {}
+  NETG = {host: true, me: 0, names};
+  setNamesVisible(false);
+  applyNetSettings(settings);
+  G = {names, drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  countdown2(() => { $("gate").classList.add("hidden"); showGame(); setPhase("handover"); });
+};
+
+/* ---------- Jeu 1 en ligne : le même jeu, sur deux téléphones ----------
+   L'hôte fait tourner la partie (phases, minuteur, points) et envoie son état à l'invité.
+   L'invité affiche le même écran ; ses actions (choisir, finir, deviner) passent par l'hôte. */
+let NETG = null;            // {host, me: 0 (hôte) ou 1 (invité), names}
+let netLast = "", netLive = {}, netSid = 0, netAr = null;
+const netOn = () => !!NETG;
+const isDrawerMe = () => !NETG || G.drawer === NETG.me;
+const netSend = m => { if (LB.room) { try { LB.room.emit("game", m); } catch (e) {} } };
+const netStroke = m => { if (netOn()) netSend(m); };
+const netNextId = () => NETG.me + "-" + (++netSid);
+function setNamesVisible(v) { $("hWho").classList.toggle("hidden", !v); document.querySelector("#menu .names").classList.toggle("hidden", !v); }
+function applyNetSettings(st) { CFG.cat = st.cat; CFG.diff = st.diff; CFG.dur = st.sec; ROUNDS = st.rounds; }
+function netGuestStart(settings, names) {
+  NETG = {host: false, me: 1, names};
+  setNamesVisible(false);
+  applyNetSettings(settings);
+  G = {names, drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  countdown2(() => { $("gate").classList.add("hidden"); showGame(); render(); });
+}
+function netEnd() { netSend({k: "bye"}); netDrop(true); }
+function netDrop(sender) {
+  NETG = null; netLast = ""; netLive = {}; netAr = null; G = null; stopTimer();
+  $("overlay").classList.add("hidden"); $("game").classList.add("hidden");
+  const leave = () => { lbLeave(); LB.status = t2("La partie privée est terminée.", "The private game has ended."); gateOpen(); };
+  if (sender) setTimeout(leave, 300); else leave();
+}
+function netOnMsg(m) {
+  if (!NETG || !m) return;
+  if (m.k === "ar") { if (m.d) { const changed = netAr !== m.ar; netAr = m.ar; if (changed && !isDrawerMe()) sizeStage(); } return; }
+  if (m.k === "bye") { netDrop(false); return; }
+  if (m.k === "state") { if (!NETG.host) netApply(m.s); }
+  else if (m.k === "req") { if (NETG.host) hostReq(m); }
+  else netApplyStroke(m);
+}
+// Traits : l'invité et l'hôte se les envoient ; seul le dessinateur trace.
+function netApplyStroke(m) {
+  if (m.k === "sb") { const st = {c: m.c, w: m.w, pts: [m.p]}; netLive[m.id] = st; strokes.push(st); }
+  else if (m.k === "sp") { if (netLive[m.id]) netLive[m.id].pts.push(m.p); }
+  else if (m.k === "se") { delete netLive[m.id]; }
+  else if (m.k === "undo") { strokes.pop(); }
+  redraw();
+}
+// Hôte : valide les actions de l'invité avant de les appliquer.
+function hostReq(m) {
+  const guestDraws = G.drawer === 1;
+  if (m.act === "phase") {
+    if (m.p === "choose" && G.phase === "handover" && guestDraws) setPhase("choose");
+    else if (m.p === "guess" && G.phase === "handoff" && !guestDraws) setPhase("guess");
+    else if (m.p === "end" && G.phase === "draw" && guestDraws) setPhase("end");
+  } else if (m.act === "pick") {
+    if (G.phase === "choose" && guestDraws && G.options.includes(m.w)) pickWord(m.w);
+  } else if (m.act === "found") {
+    if (G.phase === "guess" && !guestDraws && norm(String(m.text || "")) === norm(G.word)) reveal({by: "found"});
+  } else if (m.act === "try") {
+    if (G.phase === "guess" && !guestDraws) { G.tries = [...(G.tries || []), String(m.text || "").slice(0, 30)]; render(); }
+  } else if (m.act === "next") {
+    if (G.phase === "reveal") nextRound();
+  }
+}
+// Hôte : envoie l'état après chaque changement (render est appelé à chaque fois).
+function netPush() {
+  if (!NETG || !NETG.host || !G) return;
+  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.options, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length]);
+  if (sig === netLast) return;
+  netLast = sig;
+  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, pts: G.pts, word: G.word, options: G.options, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
+}
+// Invité : applique l'état reçu puis affiche comme le jeu solo.
+function netApply(s) {
+  if (!G) return;
+  const prev = G.phase, prevRound = G.round;
+  Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, word: s.word, options: s.options || [], result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || []});
+  if (s.phase === "handover") { strokes = []; cur = null; netLive = {}; }
+  if (s.phase !== prev) {
+    if (s.phase === "guess") { G.msg = null; G.hint = null; G.hintShown = false; }
+    netSfx(s.phase, s.result);
+  }
+  if (s.rem != null) startTimer(s.rem, () => {}); else stopTimer();
+  if (s.phase !== prev || s.round !== prevRound) { panelSig = ""; ovSig = ""; }
+  redraw();
+  render();
+}
+function netSfx(p, result) {
+  if (p === "handover" || p === "handoff") SFX.swoosh();
+  else if (p === "draw" || p === "guess") SFX.start();
+  else if (p === "end") SFX.done();
+  else if (p === "choose") SFX.choose();
+  else if (p === "reveal") { if (result && result.by === "found") { SFX.found(); confetti(); } else SFX.timeout(); }
+}
+// Écran de tour sur le téléphone : popup pour celui qui joue, attente pour l'autre.
+function renderNetTurn() {
+  const ov = $("overlay");
+  ov.classList.add("inv");
+  ov.append(menuBar(), el("div", {class: "ov-top"},
+    el("div", {class: "ov-phone rise", html: svg("phone")}),
+    el("div", {class: "kicker rise"}, s("kGuess")),
+    el("h2", {class: "ov-title rise d1"}, t2("À toi de deviner !", "Your turn to guess!"))));
+}
+gateRender();
+
+/* ---------- Démarrage ---------- */
+setupCanvas();
+applyTheme(savedTheme());
+renderHome();
+buildMenu();
+playSplash();
+</script>
+</body>
+</html>
