@@ -136,7 +136,7 @@ button:disabled{opacity:.35;cursor:default}
 .top{flex:none;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-bottom:1px solid var(--ink)}
 #menuBtn svg.i{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
 #info{display:flex;gap:var(--s3);align-items:stretch;justify-content:center;font-weight:700;text-align:left}
-.sc{display:flex;flex-direction:column;gap:2px;min-width:80px}
+.sc{display:flex;flex-direction:column;gap:2px;min-width:0;flex:0 1 auto;max-width:120px}
 .scName{font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:4px;white-space:nowrap}
 .scIco svg.i,.scCup svg.i{width:12px;height:12px}
 .scNum{font-size:24px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
@@ -232,6 +232,9 @@ button:disabled{opacity:.35;cursor:default}
 #timer2{font-weight:700;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:88px;text-align:center;padding:var(--s1) var(--s2);display:flex;justify-content:center;align-items:center}
 #timer2.urgent{background:var(--ink);color:var(--bg)}
 #timer2:empty{display:none}
+.rankList{width:min(360px,90vw);display:flex;flex-direction:column;margin-top:8px}
+.rankRow{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;border-bottom:2px solid var(--ink);padding:8px 0;font-weight:800;font-size:20px}
+.rankN{opacity:.6}.rankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #panel2{flex:none;height:160px;padding:var(--s3) var(--s3) var(--s2);display:flex;flex-direction:column;gap:var(--s2);overflow:hidden}
 #stageWrap2{flex:1;min-height:0;padding:0 var(--s2) var(--s2);display:flex;justify-content:center;align-items:center}
 #sheet2{display:flex;flex:none;align-items:stretch}
@@ -949,7 +952,8 @@ function threeWords() {
   return c.slice(0, 3);
 }
 const drawer = () => G.names[G.drawer];
-const guesser = () => G.names[1 - G.drawer];
+const others = () => G.names.map((_, i) => i).filter(i => i !== G.drawer);
+const guesser = () => G.names[others()[0]];
 
 /* ---------- Langue : textes fixes ---------- */
 function applyLang() {
@@ -1014,7 +1018,7 @@ $("start").onclick = () => {
   const n2 = $("n2").value.trim().slice(0, 20) || s("p2");
   $("menuErr").textContent = "";
   CFG.dur = DIFFS.find(d => d.id === CFG.diff).sec;
-  G = {names: [n1, n2], drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  G = {names: [n1, n2], drawer: 0, round: 1, pts: [0, 0], found: [false, false], used: [], word: null, options: [], phase: "handover", result: null};
   showGame();
   setPhase("handover");
 };
@@ -1054,9 +1058,9 @@ function renderHome() {
   })));
   $("langSw").replaceChildren(...["fr", "en"].map(l => el("button", {class: "lg" + (LANG === l ? " on" : ""), onclick: () => setLang(l)}, l.toUpperCase())));
   $("grid").replaceChildren(
-    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { $("home").classList.add("hidden"); gateOpen(); })},
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 1; $("home").classList.add("hidden"); gateOpen(); })},
       el("span", {class: "ic", html: svg("timer")}), el("span", {class: "tn"}, s("game"))),
-    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, openGame2)}, el("span", {class: "ic", html: svg("pen")}), el("span", {class: "tn"}, s("game2"))),
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 2; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "ic", html: svg("pen")}), el("span", {class: "tn"}, s("game2"))),
     ...DECO.map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {html: svg(n)}))));
 }
 function goHome() {
@@ -1122,6 +1126,7 @@ function playSplash() {
 /* ---------- Phases ---------- */
 function setPhase(p) {
   if (netOn() && !NETG.host) { netSend({k: "req", act: "phase", p}); return; }
+  if (p === "handover") G.found = G.names.map(() => false);
   if (netOn() && p === "handover") { G.options = []; strokes = []; cur = null; G.tries = []; p = "choose"; }
   G.phase = p;
   stopTimer();
@@ -1154,25 +1159,29 @@ function finishDrawing() { if (G && G.phase === "draw") setPhase("end"); }
 function reveal(result) {
   if (netOn() && !NETG.host) return;
   G.result = result;
-  const di = G.drawer, gi = 1 - G.drawer;
-  if (result.by === "found") {
-    // Le dessinateur gagne 0,5 de base, plus un bonus de 0 à 0,5 selon la vitesse de la trouvaille.
-    const left = Math.max(0, (timer.end - Date.now()) / 1000);
-    const bonus = Math.min(5, Math.max(0, Math.floor((5 * left) / timer.total + 0.1)));
-    G.pts[gi] += 10; G.pts[di] += 5 + bonus; SFX.found(); confetti();
-  }
-  else { SFX.timeout(); }
   stopTimer();
   G.phase = "reveal";
   panelSig = ""; ovSig = "";
   render();
 }
+// Un devineur trouve : il gagne 10 points, le dessinateur 5 de base + un bonus de vitesse.
+// La manche finit quand tous les devineurs ont trouvé, ou au temps.
+function markFound(i) {
+  if (!G || G.phase !== "guess" || G.found[i]) return;
+  const left = Math.max(0, (timer.end - Date.now()) / 1000);
+  const bonus = Math.min(5, Math.max(0, Math.floor((5 * left) / timer.total + 0.1)));
+  G.found[i] = true;
+  G.pts[i] += 10; G.pts[G.drawer] += 5 + bonus;
+  SFX.found(); confetti();
+  if (others().every(k => G.found[k])) reveal({by: "found"});
+  else { G.msg = null; panelSig = ""; render(); }
+}
 function finishGame() { stopTimer(); G.phase = "final"; ovSig = ""; panelSig = ""; render(); }
 function nextRound() {
   if (netOn() && !NETG.host) { netSend({k: "req", act: "next"}); return; }
   if (G.round >= ROUNDS) { finishGame(); return; }
-  G.drawer = 1 - G.drawer;
   G.round += 1;
+  G.drawer = (G.round - 1) % G.names.length;
   G.used = [...G.used, G.word].slice(-60);
   G.word = null;
   G.result = null;
@@ -1236,7 +1245,7 @@ setInterval(tick, 200);
 function render() {
   if (!G) return;
   netPush();
-  $("info").replaceChildren(...[0, 1].map(i => el("div", {class: "sc"},
+  $("info").replaceChildren(...G.names.map((_, i) => el("div", {class: "sc"},
     el("div", {class: "scName"}, el("span", {class: "scIco", html: svg(G.drawer === i ? "pen" : "eye")}), G.names[i]),
     el("div", {class: "scNum"}, fmtPts(G.pts[i])))));
   const fullScreen = ["handover", "choose", "end", "handoff", "reveal", "final"].includes(G.phase) && !(netOn() && G.phase === "handoff" && isDrawerMe());
@@ -1282,24 +1291,31 @@ function renderOverlay() {
     ov.append(el("div", {class:"fin-title"}, s("end")),
       el("div", {class:"fin-sub"}, s("endSub")));
   } else if (g.phase === "final") {
-    const order = [0, 1].sort((a, b) => g.pts[b] - g.pts[a]);
-    const tie = g.pts[0] === g.pts[1];
+    const idx = g.names.map((_, i) => i).sort((a, b) => g.pts[b] - g.pts[a]);
+    const tie = g.names.length > 1 && g.pts[idx[0]] === g.pts[idx[1]];
     ov.classList.add("inv");
-    // Pilier : le premier est plus haut que le second ; en égalité, même hauteur.
-    const place = (i, k, h) => el("div", {class: "pillar rise d" + (k + 1)},
-      el("div", {class: "pName"}, g.names[i]),
-      el("div", {class: "pBar", style: `height:${h}px`}, el("div", {class: "pNum"}, fmtPts(g.pts[i]))));
+    let board;
+    if (g.names.length === 2) {
+      // Pilier : le premier est plus haut que le second ; en égalité, même hauteur.
+      const place = (i, k, h) => el("div", {class: "pillar rise d" + (k + 1)},
+        el("div", {class: "pName"}, g.names[i]),
+        el("div", {class: "pBar", style: `height:${h}px`}, el("div", {class: "pNum"}, fmtPts(g.pts[i]))));
+      board = el("div", {class: "podiums"}, place(idx[0], 0, tie ? 150 : 190), place(idx[1], 1, tie ? 150 : 120));
+    } else {
+      board = el("div", {class: "rankList"}, idx.map((i, k) => el("div", {class: "rankRow rise d" + (k + 1)},
+        el("span", {class: "rankN"}, String(k + 1)), el("span", {class: "rankName"}, g.names[i]), el("span", {class: "rankPts"}, fmtPts(g.pts[i])))));
+    }
     ov.append(menuBar(), el("div", {class: "ov-top"},
       el("div", {class: "trophy pop", html: svg("cup")}),
       el("div", {class: "kicker rise"}, s("finKick", ROUNDS)),
-      el("h2", {class: "ov-title rise d1"}, tie ? s("tie") : s("wins", g.names[order[0]])),
-      el("div", {class: "podiums"}, place(order[0], 0, tie ? 150 : 190), place(order[1], 1, tie ? 150 : 120))),
+      el("h2", {class: "ov-title rise d1"}, tie ? s("tie") : s("wins", g.names[idx[0]])),
+      board),
       el("button", {class: "ov-cta rise d2", onclick: () => { G = null; goMenu(); }}, s("newGame"), el("span", {html: svg("arrow")})));
     if (!tie) confetti();
   } else if (g.phase === "reveal") {
     const found = g.result && g.result.by === "found";
     ov.append(menuBar(), el("div", {class:"ov-top"},
-      el("div", {class:"kicker rise"}, found ? s("found", guesser()) : s("timeout")),
+      el("div", {class:"kicker rise"}, found ? (G.names.length > 2 ? t2("Tout le monde a trouvé !", "Everyone found it!") : s("found", guesser())) : s("timeout")),
       el("div", {class:"ov-big", style: `font-size:${Math.min(15, 110 / Math.max(4, g.word.length))}vw;overflow-wrap:anywhere`}, g.word.toUpperCase())),
       el("button", {class:"ov-cta rise d2", onclick: nextRound}, s("next"), el("span", {html: svg("arrow")})));
   }
@@ -1343,6 +1359,8 @@ function renderPanel() {
     pn.append(...kids.filter(Boolean));
   } else if (g.phase === "guess" && netOn() && isDrawerMe()) {
     pn.append(el("div", {class:"patRow"}, patternEl(), el("span", {class:"count"}, `(${countLabel()})`)), el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2("Ils devinent…", "They’re guessing…"))));
+  } else if (g.phase === "guess" && netOn() && G.found[NETG.me]) {
+    pn.append(el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2("Trouvé ! En attente des autres…", "Found it! Waiting for the others…"))));
   } else if (g.phase === "guess") {
     const input = el("input", {id:"guess", placeholder: s("guessPh"), autocomplete:"off", autocapitalize:"off", enterkeyhint:"send",
       onkeydown: e => { if (e.key === "Enter") submitGuess(); }});
@@ -1436,7 +1454,7 @@ function submitGuess() {
   if (!t) return;
   if (norm(t) === norm(G.word)) {
     if (netOn() && !NETG.host) { netSend({k: "req", act: "found", text: t}); return; }
-    reveal({by: "found"});
+    markFound(netOn() ? NETG.me : others()[0]);
   } else {
     G.msg = isClose(t, G.word) ? s("close") : s("wrong");
     SFX.wrong();
@@ -1537,7 +1555,7 @@ function setupCanvas() {
 window.addEventListener("orientationchange", () => { if (G && !$("game").classList.contains("hidden")) sizeStage(); });
 
 /* ---------- Jeu numéro 2 : un dessin en trois parties, à deux ---------- */
-const C2 = {theme: "Animaux", time: 30, orient: "h", mode: "local"};
+const C2 = {theme: "Animaux", time: 30, orient: "h"};
 const THEMES2 = ["Animaux", "Navires", "Ustensiles", "Voitures", "Vêtements"];
 const MORE2 = ["Instruments", "Chaussures", "Fleurs", "Arbres", "Oiseaux", "Champignons"];
 const TIMES2 = [30, 60, 90];
@@ -1548,76 +1566,52 @@ const ORIENT2 = [
 const t2 = (fr, en) => LANG === "en" ? en : fr;
 const timeLabel2 = sec => sec === 60 ? "1 minute" : sec === 90 ? t2("1 minute 30", "1 minute 30") : `${sec} ${t2("secondes", "seconds")}`;
 let G2 = null, cv2, ctx2, cur2 = null, dpr2 = 1, cssW2 = 1, cssH2 = 1;
+let GAME_SEL = 1;          // 1 = Mot à dessiner, 2 = Trait pour trait (choisi sur l'accueil)
+let STROKE_N2 = 0;
 const lay2 = document.createElement("canvas"), lctx2 = lay2.getContext("2d"); // calque des traits : la gomme n'efface que les traits
-const drawer2 = () => G2.turn % 2 === 0 ? 0 : 1;
 const menuBar2 = () => el("div", {class: "ov-bar"}, el("button", {class: "pill", onclick: goMenu2}, s("menu")));
 
-// ----- Mode deux téléphones : une salle en direct (capacité room) -----
-// Le joueur qui dessine envoie ses traits à la fin de sa partie ; l'autre téléphone les reçoit.
-let NET2 = null, ROLE2 = null, ME2 = 0, PARTNER2 = null, NET_READY2 = false, NET_IV2 = null, ROOM_CODE2 = "", NET_ERR2 = "";
-const isMine2 = () => !NET2 || drawer2() === ME2;
-const netSend2 = m => { if (NET2) { try { NET2.emit("g2", m); } catch (e) {} } };
-const helloName2 = () => ($("m2n2").value || "").trim().slice(0, 20) || t2("Joueur 2", "Player 2");
-async function netConnect2(code, role) {
-  NET_ERR2 = "";
-  try {
-    const r = await mkRoom("dd2-" + code, role === "host");
-    r.on("g2", onNet2);
-    NET2 = r; ROLE2 = role; ME2 = role === "host" ? 0 : 1; ROOM_CODE2 = code; G2 = null;
-    if (role === "guest") {
-      netSend2({k: "hello", name: helloName2()});
-      NET_IV2 = setInterval(() => { if (!G2) netSend2({k: "hello", name: helloName2()}); }, 1500);
-    }
-  } catch (e) {
-    NET_ERR2 = t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code.");
-  }
-  renderNet2();
+/*
+  Modèle de données (identique en local et en ligne) :
+  G2.sheets[feuille][partie] = liste de traits. La partie 0 = gauche, 1 = milieu, 2 = droite.
+  Local : une seule feuille, les joueurs passent le téléphone à chaque partie (drawer = partie % 2).
+  En ligne : chaque joueur a sa feuille (0 = hôte, 1 = invité).
+    partie 0 : je dessine la gauche de MA feuille ; partie 1 : je dessine le milieu de la feuille de L'AUTRE ;
+    partie 2 : je dessine la droite de MA feuille. Les deux dessinent en même temps.
+  Chaque partie se termine au bout du temps, ou quand les deux ont appuyé sur « J’ai fini ».
+  L’hôte décide du passage à la partie suivante (g2done / g2go) et de la fin.
+*/
+const makeG2 = (names, st, online, me) => ({
+  online, me, names, theme: st.theme, time: st.time, orient: st.orient,
+  turn: 0, phase: "handover",
+  sheets: online ? names.map(() => [[], [], []]) : [[[], [], []]],
+  live: {}, done: {}, myFin: false, finSet: names.map(() => false), revealIdx: 0, introT: null, praise: 0
+});
+const allFin2 = () => G2.finSet.every(Boolean);
+const isOnline2 = () => !!(G2 && G2.online);
+const send2 = m => { if (LB.room) { try { LB.room.emit("game", isOnline2() ? {...m, from: G2.me} : m); } catch (e) {} } };
+const viewSheet2 = () => isOnline2() ? (((G2.me - G2.turn) % G2.names.length) + G2.names.length) % G2.names.length : 0;
+const drawer2 = () => G2.turn % 2 === 0 ? 0 : 1; // local uniquement
+
+// ----- Traits -----
+function strokeStart2(p0) {
+  const sh = viewSheet2(), t = G2.turn;
+  const st = {id: (isOnline2() ? G2.me : 0) + "-" + (++STROKE_N2), c: color, erase: tool === "eraser", w: tool === "eraser" ? eraserSize : size, pts: [p0], s: sh, t};
+  G2.sheets[sh][t].push(st);
+  cur2 = st;
+  if (isOnline2()) send2({k: "g2sb", s: sh, t, id: st.id, c: st.c, w: st.w, e: st.erase, p: p0});
 }
-function onNet2(m) {
-  if (!m || !m.k) return;
-  if (m.k === "hello" && ROLE2 === "host") { PARTNER2 = m.name || null; NET_READY2 = true; renderNet2(); }
-  else if (m.k === "start" && ROLE2 === "guest" && !G2) {
-    clearInterval(NET_IV2);
-    G2 = {names: m.names, theme: m.theme, time: m.time, orient: m.orient, turn: 0, turns: [[], [], []], phase: "handover"};
-    $("menu2").classList.add("hidden"); $("game2").classList.remove("hidden");
-    sizeStage2(); setPhase2("handover");
-  }
-  else if (m.k === "go" && G2 && m.turn === G2.turn && G2.phase === "handover" && !isMine2()) setPhase2("draw");
-  else if (m.k === "turn" && G2 && m.turn === G2.turn) {
-    G2.turns[m.turn] = m.strokes;
-    if (m.turn < 2) { G2.turn += 1; setPhase2("handover"); } else setPhase2("reveal");
-  }
+function undo2() {
+  if (!G2 || G2.phase !== "draw" || G2.myFin) return;
+  const list = G2.sheets[viewSheet2()][G2.turn];
+  if (!list.length) return;
+  const st = list.pop();
+  if (cur2 === st) cur2 = null;
+  if (isOnline2()) send2({k: "g2su", s: st.s, t: st.t, id: st.id});
+  redraw2();
 }
-function handover2Net() {
-  SFX.swoosh();
-  const ov = $("overlay"), mine = isMine2(), who = G2.names[drawer2()];
-  ov.replaceChildren(); ov.className = "inv";
-  ov.append(
-    el("div", {class: "ov-top"},
-      el("div", {class: "ov-phone rise", html: svg("phone")}),
-      el("div", {class: "kicker rise d1"}, t2(`Partie ${G2.turn + 1} sur 3`, `Part ${G2.turn + 1} of 3`)),
-      el("h2", {class: "ov-title rise d1"}, mine ? t2("C’est ton tour.", "Your turn.") : t2(`${who} dessine.`, `${who} is drawing.`)),
-      el("p", {class: "ov-sub rise d2"}, mine ? t2("Ton ami ne voit pas ta partie.", "Your friend can’t see your part.") : t2("Attends ton tour.", "Wait for your turn."))));
-  if (mine) ov.append(el("button", {class: "ov-cta rise d2", onclick: () => { netSend2({k: "go", turn: G2.turn}); setPhase2("draw"); }}, t2("C’est parti", "Let’s go"), el("span", {html: svg("arrow")})));
-}
-function renderNet2() {
-  $("m2Mode").replaceChildren(...[["local", t2("Sur ce téléphone", "On this phone")], ["online", t2("Deux téléphones", "Two phones")]].map(([id, lab]) => el("li", {},
-    el("button", {class: "crow" + (C2.mode === id ? " on" : ""), onclick: () => { C2.mode = id; renderNet2(); }}, lab))));
-  const box = $("m2Net"), online = C2.mode === "online";
-  const canStart = !online || (NET2 && ROLE2 === "host" && NET_READY2);
-  $("m2Start").classList.toggle("hidden", !canStart);
-  if (!online) { box.replaceChildren(); return; }
-  const status = !ROLE2 ? null : ROLE2 === "host"
-    ? (NET_READY2 ? t2(`${PARTNER2 || "Ton ami"} est là. Tu peux lancer.`, `${PARTNER2 || "Your friend"} is here. You can start.`) : t2(`Code : ${ROOM_CODE2}. En attente de ton ami…`, `Code: ${ROOM_CODE2}. Waiting for your friend…`))
-    : t2("Connecté. En attente que l’hôte lance la partie.", "Connected. Waiting for the host to start.");
-  box.replaceChildren(
-    ...(ROLE2 ? [] : [
-      el("input", {class: "field", id: "m2code", maxlength: "4", placeholder: t2("Code de la salle", "Room code"), autocomplete: "off"}),
-      el("button", {class: "crow", onclick: () => netConnect2(Math.random().toString(36).slice(2, 6).toUpperCase(), "host")}, t2("Créer une salle", "Create a room")),
-      el("button", {class: "crow", onclick: () => { const v = ($("m2code").value || "").trim().toUpperCase(); if (v) netConnect2(v, "guest"); }}, t2("Rejoindre", "Join"))]),
-    ...(status ? [el("div", {class: "kicker"}, status)] : []),
-    ...(NET_ERR2 ? [el("div", {class: "kicker"}, NET_ERR2)] : []));
-}
+
+// ----- Menu -----
 function buildMenu2() {
   const set = (id, txt) => { const n = $(id); if (n) n.textContent = txt; };
   set("m2Kick", s("kicker")); set("m2Theme", t2("Thème", "Theme")); set("m2Time", t2("Temps par partie", "Time per turn"));
@@ -1625,6 +1619,9 @@ function buildMenu2() {
   set("m2l1", t2("Dessine en premier", "Draws first")); set("m2l2", t2("Dessine ensuite", "Draws next"));
   set("m2StartTxt", s("start")); set("back2h", s("back"));
   set("m2w1", t2("Trait pour", "Line by")); set("m2w2", t2("trait", "Line"));
+  // En ligne, les prénoms viennent du salon : la section « Qui joue » disparaît, comme dans la partie 1.
+  const names = $("m2n1") && $("m2n1").closest(".sec");
+  if (names) names.classList.toggle("hidden", !!LB.room);
   const row2 = (c, i) => el("li", {},
     el("button", {class: "crow" + (C2.theme === c ? " on" : ""), onclick: () => { C2.theme = c; buildMenu2(); }},
       el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)));
@@ -1649,42 +1646,50 @@ function buildMenu2() {
 }
 $("m2More").onclick = () => showThemes2(true);
 $("themes2Back").onclick = () => showThemes2(false);
+$("back2h").onclick = () => {
+  if (LB.room) { lbLeave(); $("menu2").classList.add("hidden"); gateOpen(); }
+  else goHome();
+};
 function showThemes2(v) {
   $("themes2").classList.toggle("hidden", !v);
   if (v) buildMenu2();
 }
 function openGame2() { $("home").classList.add("hidden"); buildMenu2(); $("menu2").classList.remove("hidden"); }
-function goMenu2() {
-  stopTimer();
-  if (NET2) { try { NET2.leave(); } catch (e) {} NET2 = null; ROLE2 = null; PARTNER2 = null; NET_READY2 = false; clearInterval(NET_IV2); G2 = null; }
-  $("overlay").classList.add("hidden");
-  $("game2").classList.add("hidden");
-  $("menu2").classList.remove("hidden");
-  buildMenu2();
-}
-$("back2h").onclick = goHome;
-$("menu2Btn").onclick = goMenu2;
-$("m2Start").onclick = () => {
-  const en = LANG === "en";
-  const n1 = $("m2n1").value.trim().slice(0, 20) || (en ? "Player 1" : "Joueur 1");
-  const n2 = $("m2n2").value.trim().slice(0, 20) || (en ? "Player 2" : "Joueur 2");
-  const theme = C2.theme;
-  G = null;
-  G2 = {names: [n1, NET2 && PARTNER2 ? PARTNER2 : n2], theme, time: C2.time, orient: C2.orient, turn: 0, turns: [[], [], []], phase: "handover"};
-  netSend2({k: "start", names: G2.names, theme, time: C2.time, orient: C2.orient});
+function showGame2() {
   $("menu2").classList.add("hidden");
   $("game2").classList.remove("hidden");
   sizeStage2();
+}
+
+// ----- Démarrage -----
+$("m2Start").onclick = () => {
+  if (LB.room) { if (LB.role === "host") g2HostStart(); return; }
+  const en = LANG === "en";
+  const n1 = $("m2n1").value.trim().slice(0, 20) || (en ? "Player 1" : "Joueur 1");
+  const n2 = $("m2n2").value.trim().slice(0, 20) || (en ? "Player 2" : "Joueur 2");
+  G2 = makeG2([n1, n2], C2, false, 0);
+  $("menu2").classList.add("hidden");
+  $("game2").classList.remove("hidden");
   setPhase2("handover");
 };
+function g2HostStart() {
+  const names = LB.players.map(p => p.name);
+  if (names.length < 2) return;
+  const st = {theme: C2.theme, time: C2.time, orient: C2.orient, names, ids: LB.players.map(p => p.id)};
+  try { LB.room.emit("lobby", {k: "start2", settings: st}); } catch (e) {}
+  G2 = makeG2(names, st, true, 0);
+  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, false); } });
+}
+function g2GuestStart(st) {
+  G2 = makeG2(st.names, st, true, Math.max(1, st.ids.indexOf(LB.myId)));
+  countdown2(() => { if (G2) { $("gate").classList.add("hidden"); showGame2(); beginStep2(0, false); } });
+}
 
-// Phases : passage du téléphone, dessin chronomé, puis découverte des trois parties.
+// ----- Local : passage du téléphone entre les deux joueurs -----
 function setPhase2(p) {
   G2.phase = p; cur2 = null; stopTimer();
   const ov = $("overlay");
-  if (p === "handover" && NET2) {
-    handover2Net();
-  } else if (p === "handover") {
+  if (p === "handover") {
     SFX.swoosh();
     const who = G2.names[drawer2()];
     ov.replaceChildren(); ov.className = "inv";
@@ -1700,13 +1705,145 @@ function setPhase2(p) {
     if (p === "draw") { SFX.start(); startTimer(G2.time, endTurn2); }
     else if (p === "reveal") startReveal2();
   }
-  renderTop2(); renderPanel2(); renderFoot2(); renderNames2(); sizeStage2();
+  renderAll2();
 }
+// Fin d'une partie : en local on passe au suivant ; en ligne, on attend l'autre joueur.
 function endTurn2() {
-  if (!G2 || G2.phase !== "draw" || !isMine2()) return;
-  netSend2({k: "turn", turn: G2.turn, strokes: G2.turns[G2.turn]});
+  if (!G2 || G2.phase !== "draw") return;
+  if (isOnline2()) { stepEnd2(); return; }
   if (G2.turn < 2) { G2.turn += 1; setPhase2("handover"); }
   else setPhase2("reveal");
+}
+
+// ----- En ligne : déroulement des parties -----
+// Bouton « J’ai fini » : on verrouille son dessin ; la partie s’arrête quand les deux ont fini (ou au temps).
+function finish2() {
+  if (!G2 || G2.phase !== "draw" || G2.myFin) return;
+  G2.myFin = true; G2.finSet[G2.me] = true;
+  send2({k: "g2fin", t: G2.turn});
+  if (allFin2()) stepEnd2(); else renderPanel2();
+}
+function stepEnd2() {
+  if (!G2 || !isOnline2() || G2.phase !== "draw") return;
+  G2.phase = "wait"; stopTimer();
+  if (cur2) { send2({k: "g2se", s: cur2.s, t: cur2.t, id: cur2.id}); cur2 = null; }
+  send2({k: "g2done", t: G2.turn});
+  if (G2.me === 0) hostDone2(0, G2.turn);
+  renderAll2();
+}
+// Hôte : la partie suivante (ou le dessin final) part quand les deux ont fini.
+function hostDone2(from, t) {
+  if (!G2 || !isOnline2() || G2.me !== 0) return;
+  const set = G2.done[t] || (G2.done[t] = []);
+  if (!set.includes(from)) set.push(from);
+  if (set.length < G2.names.length || G2.turn !== t) return;
+  if (t < 2) { send2({k: "g2go", t: t + 1}); beginStep2(t + 1, true); }
+  else { send2({k: "g2go", t: 3}); beginReveal2(); }
+}
+function beginStep2(t, intro) {
+  stopTimer(); cur2 = null;
+  clearTimeout(G2.introT);
+  G2.turn = t; G2.myFin = false; G2.finSet = G2.names.map(() => false); G2.live = {};
+  if (intro) {
+    G2.phase = "intro";
+    showIntro2(t);
+    G2.introT = setTimeout(() => { if (G2 && G2.phase === "intro" && G2.turn === t) startDraw2(); }, 2200);
+  } else startDraw2();
+  renderAll2();
+}
+function startDraw2() {
+  G2.phase = "draw";
+  const ov = $("overlay"); ov.className = "hidden";
+  SFX.start();
+  startTimer(G2.time, endTurn2);
+  renderAll2();
+}
+function showIntro2(t) {
+  const ov = $("overlay");
+  ov.replaceChildren(); ov.className = "inv";
+  ov.append(menuBar2(),
+    el("div", {class: "ov-top"},
+      el("div", {class: "ov-phone rise", html: svg("phone")}),
+      el("div", {class: "kicker rise d1"}, t2(`Partie ${t + 1} sur 3`, `Part ${t + 1} of 3`)),
+      el("h2", {class: "ov-title rise d1"}, viewSheet2() === G2.me
+        ? t2("Dessine sur ta feuille.", "Draw on your own sheet.")
+        : t2(`Dessine sur la feuille de ${G2.names[viewSheet2()]}.`, `Draw on ${G2.names[viewSheet2()]}’s sheet.`)),
+      el("p", {class: "ov-sub rise d2"}, t2("Vous dessinez en même temps.", "You both draw at the same time."))));
+}
+function beginReveal2() {
+  stopTimer(); cur2 = null; G2.live = {};
+  clearTimeout(G2.introT);
+  G2.phase = "reveal"; G2.revealIdx = 0;
+  $("overlay").className = "hidden";
+  setPhase2Reveal();
+}
+function setPhase2Reveal() { startReveal2(); renderAll2(); }
+function nextReveal2() {
+  if (!G2 || G2.phase !== "reveal") return;
+  G2.revealIdx += 1;
+  startReveal2(); renderAll2();
+}
+// Fin : retour au salon (en ligne, l’autre joueur est renvoyé au salon) ou au menu (local).
+function goMenu2() {
+  stopTimer();
+  if (G2 && G2.online) {
+    send2({k: "g2bye"});
+    setTimeout(() => g2Drop(), 300);
+    return;
+  }
+  G2 = null;
+  $("overlay").classList.add("hidden");
+  $("game2").classList.add("hidden");
+  $("menu2").classList.remove("hidden");
+  buildMenu2();
+}
+function g2Drop() {
+  if (G2) clearTimeout(G2.introT);
+  G2 = null; cur2 = null; stopTimer();
+  $("overlay").classList.add("hidden");
+  $("game2").classList.add("hidden");
+  $("menu2").classList.add("hidden");
+  lbLeave(); LB.status = t2("La partie privée est terminée.", "The private game has ended.");
+  gateOpen();
+}
+// Messages reçus (route depuis netOnMsg : sujet « game », préfixe g2).
+function g2OnMsg(m) {
+  if (!isOnline2()) return;
+  const from = m.from ?? 0;
+  if (from === G2.me) return;
+  // L'hôte relaie à tous les invités ce que chacun envoie (chaque invité n'est connecté qu'à l'hôte).
+  if (G2.me === 0 && from !== 0 && m.k !== "g2bye" && LB.room) { try { LB.room.emit("game", m); } catch (e) {} }
+  if (m.k === "g2sb") {
+    const st = {id: m.id, c: m.c, w: m.w, erase: m.e, pts: [m.p], s: m.s, t: m.t};
+    G2.sheets[m.s][m.t].push(st); G2.live[m.id] = st;
+  } else if (m.k === "g2sp") {
+    const st = G2.live[m.id]; if (st) st.pts.push(m.p);
+  } else if (m.k === "g2se") {
+    delete G2.live[m.id];
+  } else if (m.k === "g2su") {
+    const list = G2.sheets[m.s][m.t];
+    const i = list.findIndex(x => x.id === m.id);
+    if (i >= 0) list.splice(i, 1);
+    delete G2.live[m.id];
+    if (G2.phase !== "reveal" && m.s === viewSheet2() && m.t === G2.turn) redraw2();
+  } else if (m.k === "g2fin") {
+    if (m.t !== G2.turn) return;
+    G2.finSet[from] = true;
+    if (G2.myFin && G2.phase === "draw" && allFin2()) stepEnd2(); else renderPanel2();
+  } else if (m.k === "g2done") {
+    hostDone2(from, m.t);
+  } else if (m.k === "g2go") {
+    if (G2.me === 0) return;
+    if (m.t === 3) beginReveal2(); else beginStep2(m.t, true);
+  } else if (m.k === "g2bye") {
+    if (G2.me === 0) { send2({k: "g2bye"}); setTimeout(() => g2Drop(), 300); } else g2Drop();
+  }
+}
+
+// ----- Affichage -----
+function renderAll2() {
+  if (!G2) return;
+  renderTop2(); renderPanel2(); renderFoot2(); renderNames2(); sizeStage2();
 }
 function renderTop2() {
   $("menu2Btn").textContent = s("menu");
@@ -1728,22 +1865,29 @@ const PRAISE2 = [
 function renderPanel2() {
   const pn = $("panel2");
   pn.replaceChildren();
-  if (G2.phase === "draw" && !isMine2()) {
-    pn.append(el("div", {class: "wordline"}, el("span", {class: "kicker"}, t2(`${G2.names[drawer2()]} dessine`, `${G2.names[drawer2()]} is drawing`))));
-  } else if (G2.phase === "draw") {
+  if (!G2) return;
+  if (G2.phase === "draw" && G2.myFin || G2.phase === "wait") {
+    pn.append(el("div", {class: "wordline"}, el("span", {class: "kicker"}, t2("En attente de ton ami…", "Waiting for your friend…"))));
+  } else if (G2.phase === "draw" || G2.phase === "intro") {
     pn.append(
       el("div", {class: "wordline"},
         el("span", {class: "kicker"}, t2(`Ta partie · ${G2.turn + 1}/3`, `Your part · ${G2.turn + 1}/3`)),
-        el("button", {class: "finish inv", onclick: endTurn2}, t2("J’ai fini", "I’m done"), el("span", {html: svg("check")}))),
+        el("button", {class: "finish inv", onclick: () => (isOnline2() ? finish2() : endTurn2())}, t2("J’ai fini", "I’m done"), el("span", {html: svg("check")}))),
       toolsRow2(),
       ...(sizeOpen ? [sizeBar()] : []),
       ...(colorOpen ? [paletteRow2()] : []));
   } else if (G2.phase === "reveal") {
+    const N = G2.names.length;
+    const more = isOnline2() && G2.revealIdx < N - 1;
+    const label = isOnline2() ? [t2(`Dessin ${G2.revealIdx + 1} sur ${N}`, `Drawing ${G2.revealIdx + 1} of ${N}`)] : [];
+    const cta = more
+      ? el("button", {class: "finish inv", onclick: nextReveal2}, t2("Passer au deuxième dessin", "Next drawing"), el("span", {html: svg("arrow")}))
+      : el("button", {class: "finish inv", onclick: goMenu2}, t2("Nouvelle partie", "New game"), el("span", {html: svg("arrow")}));
     pn.append(
+      ...(label.length ? [el("div", {class: "kicker"}, label[0])] : []),
       el("div", {class: "wordline"},
         el("span", {class: "kicker"}, t2(PRAISE2[G2.praise ?? 0].fr, PRAISE2[G2.praise ?? 0].en)),
-        el("button", {class: "finish inv", onclick: goMenu2}, t2("Nouvelle partie", "New game"), el("span", {html: svg("arrow")}))),
-    );
+        cta));
   }
 }
 // Animation de révélation : le dessin se trace tout seul, puis confettis et son.
@@ -1763,13 +1907,15 @@ function startReveal2() {
   };
   requestAnimationFrame(step);
 }
-// Prénoms au-dessus des colonnes (ou à gauche des lignes), sans texte ni phrase.
+// Prénoms au-dessus des colonnes, dans l’ordre de qui a dessiné chaque partie.
 function renderNames2() {
   const box = $("names2"), rev = G2.phase === "reveal";
   $("panel2").style.height = rev ? "auto" : "";
   $("sheet2").className = G2.orient === "h" ? "h" : "v";
   box.className = rev ? "on" : "";
-  box.replaceChildren(...(rev ? [0, 1, 2].map(i => el("span", {}, G2.names[i % 2])) : []));
+  const owner = G2.revealIdx || 0;
+  const who = z => isOnline2() ? G2.names[(owner + z) % G2.names.length] : G2.names[z % 2];
+  box.replaceChildren(...(rev ? [0, 1, 2].map(z => el("span", {}, who(z))) : []));
 }
 function renderFoot2() {
   const f = $("foot2");
@@ -1794,11 +1940,8 @@ function downloadDrawing2() {
   cv2.toBlob(blob => {
     if (!blob) return;
     const name = `dessin-${Date.now()}.png`;
-    const fallback = () => {
-      const a = el("a", {href: URL.createObjectURL(blob), download: name});
-      document.body.append(a); a.click(); a.remove();
-    };
-    fallback();
+    const a = el("a", {href: URL.createObjectURL(blob), download: name});
+    document.body.append(a); a.click(); a.remove();
   }, "image/png");
 }
 function toolsRow2() {
@@ -1820,11 +1963,6 @@ function paletteRow2() {
     class: "sw" + (c === color ? " on" : ""), style: `background:${c}`, "aria-label": s("colour"),
     onclick: () => { pickColor(c); tool = "pen"; colorOpen = false; renderPanel2(); }
   })));
-}
-function undo2() {
-  if (!G2 || G2.phase !== "draw" || !G2.turns[G2.turn].length) return;
-  G2.turns[G2.turn].pop();
-  redraw2();
 }
 
 // Zones : trois parties, en colonnes (horizontal) ou en rangées (vertical).
@@ -1865,41 +2003,38 @@ function redraw2() {
   ctx2.setTransform(dpr2, 0, 0, dpr2, 0, 0);
   ctx2.fillStyle = "#ffffff";
   ctx2.fillRect(0, 0, cssW2, cssH2);
-  if (G2.phase === "draw") {
-    const active = G2.turn, za = zoneOf2(active);
-    // Les autres parties sont teintées : on ne les voit pas, on ne dessine pas dessus pour les voir.
-    for (let i = 0; i < 3; i++) if (i !== active) {
-      const z = zoneOf2(i);
-      ctx2.fillStyle = "#f1f0ea";
-      ctx2.fillRect(z.x0 * cssW2, z.y0 * cssH2, (z.x1 - z.x0) * cssW2, (z.y1 - z.y0) * cssH2);
-    }
-    drawDividers2();
-    // Les traits de la personne précédente ne sont visibles que dans ta partie (ceux qui dépassent).
-    ctx2.save();
-    ctx2.beginPath();
-    const bz = bleedRect2(za);
-    ctx2.rect(bz.x0 * cssW2, bz.y0 * cssH2, (bz.x1 - bz.x0) * cssW2, (bz.y1 - bz.y0) * cssH2);
-    ctx2.clip();
-    ctx2.globalAlpha = 0.35; // traits précédents : en fondu, pour continuer sans les confondre
-    for (let k = 0; k < active; k++) G2.turns[k].forEach(drawStroke2);
-    ctx2.globalAlpha = 1;
-    ctx2.restore();
-    composeLayer2(() => { G2.turns[active].forEach(drawStroke2); if (cur2) drawStroke2(cur2); });
-    ctx2.font = "bold 13px Helvetica, Arial, sans-serif";
-    ctx2.fillStyle = "#111111";
-    ctx2.textAlign = "left"; ctx2.textBaseline = "top";
-    for (let i = 0; i < 3; i++) { const z = zoneOf2(i); ctx2.fillText(String(i + 1), z.x0 * cssW2 + 8, z.y0 * cssH2 + 8); }
-    ctx2.textBaseline = "alphabetic";
-  } else {
-    drawReveal2(G2.revealP ?? 1);
+  if (G2.phase === "reveal") { drawReveal2(G2.revealP ?? 1); return; }
+  const active = G2.turn, za = zoneOf2(active), sh = G2.sheets[viewSheet2()];
+  // Les autres parties sont teintées : on ne les voit pas, on ne dessine pas dessus pour les voir.
+  for (let i = 0; i < 3; i++) if (i !== active) {
+    const z = zoneOf2(i);
+    ctx2.fillStyle = "#f1f0ea";
+    ctx2.fillRect(z.x0 * cssW2, z.y0 * cssH2, (z.x1 - z.x0) * cssW2, (z.y1 - z.y0) * cssH2);
   }
+  drawDividers2();
+  // Les traits précédents ne sont visibles que dans la zone qui déborde sur la partie en cours.
+  ctx2.save();
+  ctx2.beginPath();
+  const bz = bleedRect2(za);
+  ctx2.rect(bz.x0 * cssW2, bz.y0 * cssH2, (bz.x1 - bz.x0) * cssW2, (bz.y1 - bz.y0) * cssH2);
+  ctx2.clip();
+  ctx2.globalAlpha = 0.35; // traits précédents : en fondu, pour continuer sans les confondre
+  for (let k = 0; k < active; k++) sh[k].forEach(drawStroke2);
+  ctx2.globalAlpha = 1;
+  ctx2.restore();
+  composeLayer2(() => { sh[active].forEach(drawStroke2); });
+  ctx2.font = "bold 13px Helvetica, Arial, sans-serif";
+  ctx2.fillStyle = "#111111";
+  ctx2.textAlign = "left"; ctx2.textBaseline = "top";
+  for (let i = 0; i < 3; i++) { const z = zoneOf2(i); ctx2.fillText(String(i + 1), z.x0 * cssW2 + 8, z.y0 * cssH2 + 8); }
+  ctx2.textBaseline = "alphabetic";
 }
 // Révélation : le dessin complet, sans séparations ni prénoms sur la feuille. p = avancement 0..1.
 function drawReveal2(p) {
   ctx2.setTransform(dpr2, 0, 0, dpr2, 0, 0);
   ctx2.fillStyle = "#ffffff";
   ctx2.fillRect(0, 0, cssW2, cssH2);
-  const all = G2.turns.flat();
+  const all = G2.sheets[G2.revealIdx || 0].flat();
   const total = all.length * p;
   composeLayer2(() => {
     for (let i = 0; i < all.length && i < Math.ceil(total); i++) {
@@ -1921,7 +2056,7 @@ function drawDividers2() {
   ctx2.stroke();
   ctx2.restore();
 }
-// Petit débord autorisé : la personne suivante voit ce trait pour continuer dans sa partie.
+// Petit débord autorisé : la partie suivante voit ce trait pour continuer dans sa zone.
 const BLEED2 = 0.025;
 function bleedRect2(z) {
   const mx = BLEED2 + 2 / cssW2, my = BLEED2 + 2 / cssH2; // 2 px de plus
@@ -1936,6 +2071,7 @@ function pt2(e) {
   return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
 }
 function sizeStage2() {
+  if (!G2) return;
   const top = document.querySelector("#game2 .top").offsetHeight;
   const rev = G2.phase === "reveal";
   const vert = rev && G2.orient === "v";
@@ -1953,23 +2089,31 @@ function sizeStage2() {
 function setupCanvas2() {
   cv2 = $("cv2"); ctx2 = cv2.getContext("2d");
   cv2.addEventListener("pointerdown", e => {
-    if (!G2 || G2.phase !== "draw" || !isMine2()) return;
+    if (!G2 || G2.phase !== "draw" || G2.myFin) return;
     const p0 = pt2(e);
     if (!inZone2(p0)) return; // on ne dessine que dans sa propre partie
     cv2.setPointerCapture(e.pointerId);
-    cur2 = {c: color, erase: tool === "eraser", w: tool === "eraser" ? eraserSize : size, pts: [p0]};
+    strokeStart2(p0);
     redraw2();
   });
   cv2.addEventListener("pointermove", e => {
     if (!cur2) return;
     const p = pt2(e);
-    if (inZone2(p)) { cur2.pts.push(p); redraw2(); }
+    if (inZone2(p)) {
+      cur2.pts.push(p);
+      if (isOnline2()) send2({k: "g2sp", s: cur2.s, t: cur2.t, id: cur2.id, p});
+      redraw2();
+    }
   });
   const end = e => {
     if (!cur2) return;
+    const st = cur2;
     const p = pt2(e);
-    if (inZone2(p)) cur2.pts.push(p);
-    G2.turns[G2.turn].push(cur2);
+    if (inZone2(p)) {
+      st.pts.push(p);
+      if (isOnline2()) send2({k: "g2sp", s: st.s, t: st.t, id: st.id, p});
+    }
+    if (isOnline2()) send2({k: "g2se", s: st.s, t: st.t, id: st.id});
     cur2 = null;
     redraw2();
   };
@@ -2000,7 +2144,10 @@ async function lbConnect(code, role, name) {
   clearInterval(LB.iv);
   Object.assign(LB, {code, role, room: null, myId: "", players: [], last: "", lastT: 0, iv: null});
   try {
-    const r = await mkRoom("dd-" + code, role === "host");
+    const r = await Promise.race([
+      mkRoom("dd-" + code, role === "host"),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 15000))
+    ]);
     r.on("lobby", lbOnMsg);
     r.on("game", netOnMsg);
     LB.room = r;
@@ -2014,7 +2161,7 @@ async function lbConnect(code, role, name) {
     }
     lbRender();
   } catch (e) {
-    if (role === "guest") LB.code = null;
+    LB.code = null; LB.role = null; LB.room = null;
     lbInfo(role === "host"
       ? t2("Impossible de créer la partie en ligne. Vérifie ta connexion internet.", "Couldn't create the online game. Check your internet connection.")
       : t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code."));
@@ -2068,6 +2215,8 @@ function lbOnMsg(m) {
     lbRender();
   } else if (m.k === "start" && LB.role === "guest") {
     netGuestStart(m.settings, m.names);
+  } else if (m.k === "start2" && LB.role === "guest") {
+    g2GuestStart(m.settings);
   }
 }
 const gSaved = () => { try { return localStorage.getItem("dd_name") || ""; } catch (e) { return ""; } };
@@ -2085,9 +2234,19 @@ function gateBack() {
   if (GATE === "menu") { $("gate").classList.add("hidden"); goHome(); return; }
   lbLeave(); GATE = "menu"; gateRender();
 }
-function gateLocal() { $("gate").classList.add("hidden"); setNamesVisible(true); goMenu(); }
+function gateLocal() { $("gate").classList.add("hidden"); if (GAME_SEL === 2) { openGame2(); return; } setNamesVisible(true); goMenu(); }
 async function gateConnect(code, role, name) {
   gSave(name);
+  if (role === "host") {
+    // Le code s'affiche tout de suite ; s'il n'y a pas de connexion, on revient au formulaire avec le message.
+    LB.status = t2("Création de la partie…", "Creating the game…");
+    Object.assign(LB, {code, role});
+    GATE = "host"; gateRender();
+    await lbConnect(code, role, name);
+    GATE = LB.code ? "host" : "create";
+    gateRender();
+    return;
+  }
   await lbConnect(code, role, name);
   if (LB.code) GATE = role;
   gateRender();
@@ -2112,7 +2271,7 @@ function gateRender() {
   const head = [
     el("div", {class: "menuTop"}, el("button", {class: "pill", onclick: gateBack}, GATE === "menu" ? s("back") : s("backBtn"))),
     el("div", {class: "poster"}, el("div", {class: "kicker"}, t2("Choisis ton mode", "Choose your mode")),
-      el("h1", {}, el("span", {class: "w1"}, t2("Mot", "Word to")), el("br", {}), el("span", {class: "w2"}, t2("à dessiner", "draw"))))
+      el("h1", {}, el("span", {class: "w1"}, GAME_SEL === 2 ? t2("Trait pour", "Line by") : t2("Mot", "Word to")), el("br", {}), el("span", {class: "w2"}, GAME_SEL === 2 ? t2("trait", "line") : t2("à dessiner", "draw"))))
   ];
   let body;
   if (GATE === "menu") {
@@ -2148,7 +2307,7 @@ function gateRender() {
     if (GATE === "host") {
       body.push(names.length < 2
         ? el("div", {class: "kicker"}, t2("En attente de ton ami…", "Waiting for your friend…"))
-        : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); goMenu(); setNamesVisible(false); }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
+        : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); if (GAME_SEL === 2) openGame2(); else { goMenu(); setNamesVisible(false); } }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
     } else if (LB.started && LB.settings) {
       const d = DIFFS.find(x => x.id === LB.settings.diff);
       body.push(el("div", {class: "kicker"}, `${catLabel(LB.settings.cat)} · ${lg(d.label)} · ${LB.settings.sec} s · ${LB.settings.rounds}`));
@@ -2159,38 +2318,39 @@ function gateRender() {
   const showStatus = true;
   g.replaceChildren(...head, ...body, ...(showStatus && LB.status ? [el("div", {class: "kicker"}, LB.status)] : []));
 }
-// Démarrage en ligne : l'hôte envoie les réglages et les noms, puis le compte à rebours lance la partie.
+// Démarrage en ligne : l'hôte envoie les réglages, les prénoms et les identifiants, puis le compte à rebours lance la partie.
 const startLocal1 = $("start").onclick;
 $("start").onclick = e => {
   if (!LB.room || LB.role !== "host") return startLocal1(e);
   const d = DIFFS.find(x => x.id === CFG.diff);
-  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: ROUNDS, sec: d.sec};
-  const names = LB.players.slice(0, 2).map(p => p.name);
+  const names = LB.players.map(p => p.name);
+  // Chacun dessine une fois : une manche par joueur.
+  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: names.length, sec: d.sec, ids: LB.players.map(p => p.id)};
   try { LB.room.emit("lobby", {k: "start", settings, names}); } catch (err) {}
   NETG = {host: true, me: 0, names};
   setNamesVisible(false);
   applyNetSettings(settings);
-  G = {names, drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  G = {names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null};
   countdown2(() => { $("gate").classList.add("hidden"); showGame(); setPhase("handover"); });
 };
 
-/* ---------- Jeu 1 en ligne : le même jeu, sur deux téléphones ----------
-   L'hôte fait tourner la partie (phases, minuteur, points) et envoie son état à l'invité.
-   L'invité affiche le même écran ; ses actions (choisir, finir, deviner) passent par l'hôte. */
-let NETG = null;            // {host, me: 0 (hôte) ou 1 (invité), names}
+/* ---------- Jeu 1 en ligne : le même jeu, sur plusieurs téléphones ----------
+   L'hôte fait tourner la partie (phases, minuteur, points) et envoie son état à tous.
+   Les invités ne sont connectés qu'à l'hôte : celui-ci relaie leurs traits. */
+let NETG = null;            // {host, me: index du joueur (0 = hôte), names}
 let netLast = "", netLive = {}, netSid = 0, netAr = null;
 const netOn = () => !!NETG;
 const isDrawerMe = () => !NETG || G.drawer === NETG.me;
-const netSend = m => { if (LB.room) { try { LB.room.emit("game", m); } catch (e) {} } };
+const netSend = m => { if (LB.room) { try { LB.room.emit("game", NETG ? {...m, from: NETG.me} : m); } catch (e) {} } };
 const netStroke = m => { if (netOn()) netSend(m); };
 const netNextId = () => NETG.me + "-" + (++netSid);
 function setNamesVisible(v) { $("hWho").classList.toggle("hidden", !v); document.querySelector("#menu .names").classList.toggle("hidden", !v); }
 function applyNetSettings(st) { CFG.cat = st.cat; CFG.diff = st.diff; CFG.dur = st.sec; ROUNDS = st.rounds; }
 function netGuestStart(settings, names) {
-  NETG = {host: false, me: 1, names};
+  NETG = {host: false, me: Math.max(1, settings.ids.indexOf(LB.myId)), names};
   setNamesVisible(false);
   applyNetSettings(settings);
-  G = {names, drawer: 0, round: 1, pts: [0, 0], used: [], word: null, options: [], phase: "handover", result: null};
+  G = {names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null};
   countdown2(() => { $("gate").classList.add("hidden"); showGame(); render(); });
 }
 function netEnd() { netSend({k: "bye"}); netDrop(true); }
@@ -2201,14 +2361,23 @@ function netDrop(sender) {
   if (sender) setTimeout(leave, 300); else leave();
 }
 function netOnMsg(m) {
+  if (m && typeof m.k === "string" && m.k.startsWith("g2")) { g2OnMsg(m); return; }
   if (!NETG || !m) return;
+  const from = m.from ?? 0;
+  if (from === NETG.me) return;
+  if (m.k === "bye") {
+    // Si un joueur part, la partie s'arrête pour tout le monde.
+    if (NETG.host) { netSend({k: "bye"}); setTimeout(() => netDrop(false), 300); } else netDrop(false);
+    return;
+  }
+  // L'hôte relaie à tous les invités les traits et l'aspect du dessinateur.
+  if (NETG.host && from !== 0 && ["sb", "sp", "se", "undo", "ar"].includes(m.k)) { try { LB.room.emit("game", m); } catch (e) {} }
   if (m.k === "ar") { if (m.d) { const changed = netAr !== m.ar; netAr = m.ar; if (changed && !isDrawerMe()) sizeStage(); } return; }
-  if (m.k === "bye") { netDrop(false); return; }
   if (m.k === "state") { if (!NETG.host) netApply(m.s); }
   else if (m.k === "req") { if (NETG.host) hostReq(m); }
   else netApplyStroke(m);
 }
-// Traits : l'invité et l'hôte se les envoient ; seul le dessinateur trace.
+// Traits : tout le monde les reçoit ; seul le dessinateur trace.
 function netApplyStroke(m) {
   if (m.k === "sb") { const st = {c: m.c, w: m.w, pts: [m.p]}; netLive[m.id] = st; strokes.push(st); }
   else if (m.k === "sp") { if (netLive[m.id]) netLive[m.id].pts.push(m.p); }
@@ -2216,19 +2385,18 @@ function netApplyStroke(m) {
   else if (m.k === "undo") { strokes.pop(); }
   redraw();
 }
-// Hôte : valide les actions de l'invité avant de les appliquer.
+// Hôte : valide les actions de chaque joueur avant de les appliquer (m.from = son index).
 function hostReq(m) {
-  const guestDraws = G.drawer === 1;
+  const who = m.from ?? 0, isD = G.drawer === who;
   if (m.act === "phase") {
-    if (m.p === "choose" && G.phase === "handover" && guestDraws) setPhase("choose");
-    else if (m.p === "guess" && G.phase === "handoff" && !guestDraws) setPhase("guess");
-    else if (m.p === "end" && G.phase === "draw" && guestDraws) setPhase("end");
+    if (m.p === "choose" && G.phase === "handover" && isD) setPhase("choose");
+    else if (m.p === "end" && G.phase === "draw" && isD) setPhase("end");
   } else if (m.act === "pick") {
-    if (G.phase === "choose" && guestDraws && G.options.includes(m.w)) pickWord(m.w);
+    if (G.phase === "choose" && isD && G.options.includes(m.w)) pickWord(m.w);
   } else if (m.act === "found") {
-    if (G.phase === "guess" && !guestDraws && norm(String(m.text || "")) === norm(G.word)) reveal({by: "found"});
+    if (G.phase === "guess" && !isD && !G.found[who] && norm(String(m.text || "")) === norm(G.word)) markFound(who);
   } else if (m.act === "try") {
-    if (G.phase === "guess" && !guestDraws) { G.tries = [...(G.tries || []), String(m.text || "").slice(0, 30)]; render(); }
+    if (G.phase === "guess" && !isD) { G.tries = [...(G.tries || []), String(m.text || "").slice(0, 30)]; render(); }
   } else if (m.act === "next") {
     if (G.phase === "reveal") nextRound();
   }
@@ -2236,16 +2404,16 @@ function hostReq(m) {
 // Hôte : envoie l'état après chaque changement (render est appelé à chaque fois).
 function netPush() {
   if (!NETG || !NETG.host || !G) return;
-  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.options, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length]);
+  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.found, G.options, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length]);
   if (sig === netLast) return;
   netLast = sig;
-  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, pts: G.pts, word: G.word, options: G.options, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
+  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, names: G.names, pts: G.pts, found: G.found, word: G.word, options: G.options, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
 }
-// Invité : applique l'état reçu puis affiche comme le jeu solo.
+// Invités : applique l'état reçu puis affiche comme le jeu solo.
 function netApply(s) {
   if (!G) return;
   const prev = G.phase, prevRound = G.round;
-  Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, word: s.word, options: s.options || [], result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || []});
+  Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, found: s.found || G.found, word: s.word, options: s.options || [], result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || []});
   if (s.phase === "handover" || s.phase === "choose") { strokes = []; cur = null; netLive = {}; redraw(); }
   if (s.phase !== prev) {
     if (s.phase === "guess") { G.msg = null; G.hint = null; G.hintShown = false; }
@@ -2263,7 +2431,7 @@ function netSfx(p, result) {
   else if (p === "choose") SFX.choose();
   else if (p === "reveal") { if (result && result.by === "found") { SFX.found(); confetti(); } else SFX.timeout(); }
 }
-// Écran de tour sur le téléphone : popup pour celui qui joue, attente pour l'autre.
+// Écran de tour sur le téléphone : popup pour celui qui devine, attente pour les autres.
 function renderNetTurn() {
   const ov = $("overlay");
   ov.classList.add("inv");
@@ -2272,6 +2440,7 @@ function renderNetTurn() {
     el("div", {class: "kicker rise"}, s("kGuess")),
     el("h2", {class: "ov-title rise d1"}, t2("À toi de deviner !", "Your turn to guess!"))));
 }
+
 gateRender();
 
 /* ---------- Démarrage ---------- */
