@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!doctype html>
 <html lang="fr">
 <head>
@@ -3108,9 +3107,10 @@ async function lbConnect(code, role, name) {
     lbRender();
   } catch (e) {
     LB.code = null; LB.role = null; LB.room = null;
+    const why = e && (e.type || e.message) ? ` (${e.type || e.message})` : "";
     lbInfo(role === "host"
-      ? t2("Impossible de créer la partie en ligne. Vérifie ta connexion internet.", "Couldn't create the online game. Check your internet connection.")
-      : t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code."));
+      ? t2("Impossible de créer la partie en ligne. Vérifie ta connexion internet.", "Couldn't create the online game. Check your internet connection.") + why
+      : t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code.") + why);
   }
 }
 // Salon en pair à pair (PeerJS, gratuit, sans compte). L'hôte a l'identifiant du salon ;
@@ -3137,10 +3137,18 @@ function mkRoom(id, isHost) {
       peer.on("connection", c => { conns.push(c); wire(c); });
     } else {
       peer.on("open", () => {
-        conn = peer.connect(id, {reliable: true});
-        wire(conn);
-        conn.on("open", () => resolve(room));
-        conn.on("error", err => reject(err));
+        // Le serveur peut mettre un instant à enregistrer l'hôte : on retente si « peer-unavailable ».
+        let tries = 0;
+        const go = () => {
+          conn = peer.connect(id, {reliable: true});
+          wire(conn);
+          conn.on("open", () => resolve(room));
+          conn.on("error", err => {
+            if (err && err.type === "peer-unavailable" && ++tries < 5) setTimeout(go, 1000);
+            else reject(err);
+          });
+        };
+        go();
       });
     }
   });
@@ -3616,5 +3624,3 @@ playSplash();
 </script>
 </body>
 </html>
-
-</body></html>
