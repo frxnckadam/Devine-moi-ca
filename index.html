@@ -225,8 +225,9 @@ button:disabled{opacity:.35;cursor:default}
 .score-line{display:flex;align-items:center;gap:var(--s2);font-size:18px;font-weight:700}
 
 /* Jeu numéro 2 */
-#menu2{height:100%;max-width:560px;margin:0 auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5);overflow-y:auto}
-#menu2 #m2Start{position:sticky;bottom:0;z-index:2;margin-top:auto;flex:none}
+#menu2{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
+#menu2 .m2Scroll{flex:1;min-height:0;overflow-y:auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5)}
+#menu2 #m2Start{flex:none;width:calc(100% - 2 * var(--s4));margin:0 var(--s4) var(--s4)}
 #game2{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
 #info2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
 .t2Theme{font-size:18px;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
@@ -351,6 +352,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 </div>
 
 <div id="menu2" class="hidden">
+  <div class="m2Scroll">
   <div class="menuTop"><button class="pill" id="back2h">← Accueil</button></div>
   <div class="poster">
     <div class="kicker" id="m2Kick">Dessine. Devine. Gagne.</div>
@@ -391,6 +393,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
     <div class="soundBox" id="m2Sound"></div>
   </div>
 
+  </div>
   <button id="m2Start" class="inv"><span id="m2StartTxt">Commencer</span> <span>→</span></button>
 </div>
 
@@ -1142,6 +1145,7 @@ function setPhase(p) {
   }
   else if (p === "choose") {
     G.options = threeWords();
+    if (netOn()) netSend({k: "priv", to: G.drawer, opts: G.options});
     // 30 secondes pour choisir ; sinon le mot est tiré au hasard parmi les trois.
     startTimer(30, () => pickWord(G.options[Math.floor(Math.random() * G.options.length)]));
   }
@@ -1188,7 +1192,12 @@ function nextRound() {
   G.result = null;
   setPhase("handover");
 }
-function pickWord(w) { if (netOn() && !NETG.host) { netSend({k: "req", act: "pick", w}); return; } G.word = w; setPhase("draw"); }
+function pickWord(w) {
+  if (netOn() && !NETG.host) { netSend({k: "req", act: "pick", w}); return; }
+  G.word = w;
+  if (netOn()) netSend({k: "priv", to: G.drawer, word: w});
+  setPhase("draw");
+}
 
 /* ---------- Minuteur et rappel ---------- */
 function startTimer(sec, onEnd) {
@@ -1223,7 +1232,7 @@ function tick() {
     if (n > G.revealN) { G.revealN = n; updatePattern(); SFX.hint(); }
   }
   const hintAt = {facile: 7, moyen: 15, difficile: 20, impossible: 30}[CFG.diff];
-  if (G && G.phase === "guess" && !G.hintShown && hintAt && left <= hintAt && left > 0) {
+  if (G && G.phase === "guess" && !(netOn() && !NETG.host) && !G.hintShown && hintAt && left <= hintAt && left > 0) {
     G.hintShown = true;
     G.hint = makeHint(G.word);
     SFX.hint();
@@ -1430,20 +1439,17 @@ function revealTarget(left) {
   if (CFG.diff === "impossible") return left <= t / 4 ? 3 : left <= t / 3 ? 2 : left <= t / 2 ? 1 : 0;
   return 0;
 }
-function patternEl() {
+// Motif : lettres cachées en « _ », lettres déjà révélées affichées.
+function maskWord() {
   const shown = new Set((G.reveal || []).slice(0, G.revealN || 0));
-  let idx = 0;
-  return el("div", {class: "pattern"}, G.word.split(" ").map(word => {
-    const chars = [...word].map(c => {
-      const i = idx++;
-      if (!/[\p{L}\p{N}]/u.test(c)) return el("span", {class: "ch"}, c);
-      return el("span", {class: "ch"}, shown.has(i) ? c.toUpperCase() : "_");
-    });
-    idx++;
-    return el("span", {class: "wd"}, chars);
-  }));
+  return [...G.word].map((c, i) => (/[\p{L}\p{N}]/u.test(c) && !shown.has(i)) ? "_" : c).join("");
 }
-function countLabel() { return G.word.split(" ").map(w => letterCount(w)).join(" · "); }
+function patternEl() {
+  const pstr = G.word ? maskWord() : (G.pat || "");
+  return el("div", {class: "pattern"}, pstr.split(" ").map(word => el("span", {class: "wd"},
+    [...word].map(c => el("span", {class: "ch"}, c === "_" || !/[\p{L}\p{N}]/u.test(c) ? c : c.toUpperCase())))));
+}
+function countLabel() { return G.word ? G.word.split(" ").map(w => letterCount(w)).join(" · ") : (G.label || ""); }
 function updatePattern() {
   const old = document.querySelector("#panel .pattern");
   if (old) old.replaceWith(patternEl());
@@ -1453,13 +1459,14 @@ function submitGuess() {
   if (!inp) return;
   const t = inp.value.trim();
   if (!t) return;
+  if (netOn() && !NETG.host) { netSend({k: "req", act: "found", text: t.slice(0, 30)}); inp.value = ""; return; }
   if (norm(t) === norm(G.word)) {
-    if (netOn() && !NETG.host) { netSend({k: "req", act: "found", text: t}); return; }
     markFound(netOn() ? NETG.me : others()[0]);
   } else {
     G.msg = isClose(t, G.word) ? s("close") : s("wrong");
     SFX.wrong();
-    if (netOn()) { if (NETG.host) G.tries = [...(G.tries || []), t.slice(0, 30)]; else netSend({k: "req", act: "try", text: t.slice(0, 30)}); render(); }
+    if (netOn()) G.tries = [...(G.tries || []), t.slice(0, 30)];
+    render();
     renderFeedback();
     inp.value = "";
   }
@@ -1724,12 +1731,14 @@ function endTurn2() {
 // Bouton « J’ai fini » : on verrouille son dessin ; la partie s’arrête quand les deux ont fini (ou au temps).
 function finish2() {
   if (!G2 || G2.phase !== "draw" || G2.myFin) return;
+  SFX.done();
   G2.myFin = true; G2.finSet[G2.me] = true;
   send2({k: "g2fin", t: G2.turn});
   if (allFin2()) stepEnd2(); else renderPanel2();
 }
 function stepEnd2() {
   if (!G2 || !isOnline2() || G2.phase !== "draw") return;
+  if (allFin2()) SFX.done(); else SFX.timeout();
   G2.phase = "wait"; stopTimer();
   if (cur2) { send2({k: "g2se", s: cur2.s, t: cur2.t, id: cur2.id}); cur2 = null; }
   send2({k: "g2done", t: G2.turn});
@@ -1758,6 +1767,7 @@ function beginStep2(t, intro) {
 }
 function startDraw2() {
   G2.phase = "draw";
+  const stg = $("stage2"); stg.classList.remove("pop"); void stg.offsetWidth; stg.classList.add("pop");
   const ov = $("overlay"); ov.className = "hidden";
   SFX.start();
   startTimer(G2.time, endTurn2);
@@ -1765,6 +1775,7 @@ function startDraw2() {
 }
 // Thème affiché en plein écran sur les deux téléphones, avant le premier dessin.
 function showTheme2() {
+  SFX.swoosh();
   const ov = $("overlay"), name = catLabel(G2.theme).toUpperCase();
   ov.replaceChildren(); ov.className = "inv";
   ov.append(menuBar2(),
@@ -1774,6 +1785,7 @@ function showTheme2() {
       el("p", {class: "ov-sub rise d2"}, t2("Vous dessinez tous en même temps.", "Everyone draws at the same time."))));
 }
 function showIntro2(t) {
+  SFX.swoosh();
   const ov = $("overlay");
   ov.replaceChildren(); ov.className = "inv";
   ov.append(menuBar2(),
@@ -1794,6 +1806,7 @@ function beginReveal2() {
 }
 function setPhase2Reveal() { startReveal2(); renderAll2(); }
 function nextReveal2() {
+  SFX.swoosh();
   if (!G2 || G2.phase !== "reveal") return;
   G2.revealIdx += 1;
   startReveal2(); renderAll2();
@@ -1844,6 +1857,7 @@ function g2OnMsg(m) {
   } else if (m.k === "g2fin") {
     if (m.t !== G2.turn) return;
     G2.finSet[from] = true;
+    SFX.choose();
     if (G2.myFin && G2.phase === "draw" && allFin2()) stepEnd2(); else renderPanel2();
   } else if (m.k === "g2done") {
     hostDone2(from, m.t);
@@ -1893,16 +1907,11 @@ function renderPanel2() {
       ...(colorOpen ? [paletteRow2()] : []));
   } else if (G2.phase === "reveal") {
     const N = G2.names.length;
-    const more = isOnline2() && G2.revealIdx < N - 1;
-    const label = isOnline2() ? [t2(`Dessin ${G2.revealIdx + 1} sur ${N}`, `Drawing ${G2.revealIdx + 1} of ${N}`)] : [];
-    const cta = more
-      ? el("button", {class: "finish inv", onclick: nextReveal2}, t2("Passer au deuxième dessin", "Next drawing"), el("span", {html: svg("arrow")}))
-      : el("button", {class: "finish inv", onclick: goMenu2}, t2("Nouvelle partie", "New game"), el("span", {html: svg("arrow")}));
     pn.append(
-      ...(label.length ? [el("div", {class: "kicker"}, label[0])] : []),
+      ...(isOnline2() ? [el("div", {class: "kicker"}, t2(`Dessin ${G2.revealIdx + 1} sur ${N}`, `Drawing ${G2.revealIdx + 1} of ${N}`))] : []),
       el("div", {class: "wordline"},
         el("span", {class: "kicker"}, t2(PRAISE2[G2.praise ?? 0].fr, PRAISE2[G2.praise ?? 0].en)),
-        cta));
+        el("button", {class: "finish inv", onclick: downloadDrawing2}, t2("Télécharger le dessin", "Download the drawing"), el("span", {html: svg("download")}))));
   }
 }
 // Animation de révélation : le dessin se trace tout seul, puis confettis et son.
@@ -1936,9 +1945,10 @@ function renderFoot2() {
   const f = $("foot2");
   if (G2.phase !== "reveal") { f.classList.add("hidden"); return; }
   f.classList.remove("hidden");
+  const more = isOnline2() && G2.revealIdx < G2.names.length - 1;
   f.replaceChildren(
-    el("button", {class: "inv foot2Main", onclick: downloadDrawing2},
-      el("span", {}, t2("Télécharger le dessin", "Download the drawing")), el("span", {html: svg("download")})));
+    el("button", {class: "inv foot2Main", onclick: more ? nextReveal2 : goMenu2},
+      el("span", {}, more ? t2("Passer au dessin suivant", "Next drawing") : t2("Nouvelle partie", "New game")), el("span", {html: svg("arrow")})));
 }
 function shareDrawing2() {
   cv2.toBlob(blob => {
@@ -1952,6 +1962,7 @@ function shareDrawing2() {
   }, "image/png");
 }
 function downloadDrawing2() {
+  SFX.found();
   cv2.toBlob(blob => {
     if (!blob) return;
     const name = `dessin-${Date.now()}.png`;
@@ -2327,7 +2338,10 @@ function gateRender() {
       const d = DIFFS.find(x => x.id === LB.settings.diff);
       body.push(el("div", {class: "kicker"}, `${catLabel(LB.settings.cat)} · ${lg(d.label)} · ${LB.settings.sec} s · ${LB.settings.rounds}`));
     } else {
-      body.push(el("div", {class: "kicker"}, t2("En attente que l’hôte lance la partie.", "Waiting for the host to start.")));
+      const hostName = (LB.players[0] || {}).name || t2("L’hôte", "The host");
+      body.push(el("div", {class: "kicker"}, t2(`${hostName} règle la partie…`, `${hostName} is setting up the game…`)));
+      body.push(el("div", {class: "kicker"}, t2("Choisis la couleur du fond en attendant.", "Pick a background colour while you wait.")));
+      body.push(el("div", {class: "swatches-bg"}, THEMES.map(t => el("button", {class: "bgdot" + (t.id === savedTheme() ? " on" : ""), title: lg(t.name), "aria-label": lg(t.name), style: `background:${t.bg}`, onclick: () => { applyTheme(t.id); gateRender(); }}))));
     }
   }
   const showStatus = true;
@@ -2339,8 +2353,7 @@ $("start").onclick = e => {
   if (!LB.room || LB.role !== "host") return startLocal1(e);
   const d = DIFFS.find(x => x.id === CFG.diff);
   const names = LB.players.map(p => p.name);
-  // Chacun dessine une fois : une manche par joueur.
-  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: names.length, sec: d.sec, ids: LB.players.map(p => p.id)};
+  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: ROUNDS, sec: d.sec, ids: LB.players.map(p => p.id)};
   try { LB.room.emit("lobby", {k: "start", settings, names}); } catch (err) {}
   NETG = {host: true, me: 0, names};
   setNamesVisible(false);
@@ -2387,6 +2400,14 @@ function netOnMsg(m) {
   }
   // L'hôte relaie à tous les invités les traits et l'aspect du dessinateur.
   if (NETG.host && from !== 0 && ["sb", "sp", "se", "undo", "ar"].includes(m.k)) { try { LB.room.emit("game", m); } catch (e) {} }
+  if (m.k === "priv") {
+    if (m.to === NETG.me) { if (m.word) G.word = m.word; if (m.opts) G.options = m.opts; render(); }
+    return;
+  }
+  if (m.k === "fb") {
+    if (m.to === NETG.me) { G.msg = m.close ? s("close") : s("wrong"); SFX.wrong(); renderFeedback(); }
+    return;
+  }
   if (m.k === "ar") { if (m.d) { const changed = netAr !== m.ar; netAr = m.ar; if (changed && !isDrawerMe()) sizeStage(); } return; }
   if (m.k === "state") { if (!NETG.host) netApply(m.s); }
   else if (m.k === "req") { if (NETG.host) hostReq(m); }
@@ -2409,7 +2430,11 @@ function hostReq(m) {
   } else if (m.act === "pick") {
     if (G.phase === "choose" && isD && G.options.includes(m.w)) pickWord(m.w);
   } else if (m.act === "found") {
-    if (G.phase === "guess" && !isD && !G.found[who] && norm(String(m.text || "")) === norm(G.word)) markFound(who);
+    if (G.phase === "guess" && !isD && !G.found[who]) {
+      const t = String(m.text || "");
+      if (norm(t) === norm(G.word)) markFound(who);
+      else { G.tries = [...(G.tries || []), t.slice(0, 30)]; netSend({k: "fb", to: who, close: isClose(t, G.word)}); render(); }
+    }
   } else if (m.act === "try") {
     if (G.phase === "guess" && !isD) { G.tries = [...(G.tries || []), String(m.text || "").slice(0, 30)]; render(); }
   } else if (m.act === "next") {
@@ -2419,16 +2444,20 @@ function hostReq(m) {
 // Hôte : envoie l'état après chaque changement (render est appelé à chaque fois).
 function netPush() {
   if (!NETG || !NETG.host || !G) return;
-  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.found, G.options, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length]);
+  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.found, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length, G.hint]);
   if (sig === netLast) return;
   netLast = sig;
-  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, names: G.names, pts: G.pts, found: G.found, word: G.word, options: G.options, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
+  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, names: G.names, pts: G.pts, found: G.found, word: G.phase === "reveal" ? G.word : null, pat: G.word ? maskWord() : "", label: G.word ? countLabel() : "", hint: G.hint || null, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
 }
 // Invités : applique l'état reçu puis affiche comme le jeu solo.
 function netApply(s) {
   if (!G) return;
   const prev = G.phase, prevRound = G.round;
-  Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, found: s.found || G.found, word: s.word, options: s.options || [], result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || []});
+  Object.assign(G, {phase: s.phase, round: s.round, drawer: s.drawer, pts: s.pts, found: s.found || G.found, result: s.result, reveal: s.reveal, revealN: s.revealN || 0, tries: s.tries || [], pat: s.pat || "", label: s.label || "", hint: s.hint || null});
+  if (!isDrawerMe()) G.options = [];
+  if (s.phase === "reveal") G.word = s.word || G.word;
+  else if (s.phase === "handover") { G.word = null; G.options = []; }
+  else if (s.phase === "choose") G.word = null;
   if (s.phase === "handover" || s.phase === "choose") { strokes = []; cur = null; netLive = {}; redraw(); }
   if (s.phase !== prev) {
     if (s.phase === "guess") { G.msg = null; G.hint = null; G.hintShown = false; }
