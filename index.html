@@ -3122,12 +3122,7 @@ function mkRoom(id, isHost) {
     let conn = null;
     const dispatch = (topic, data) => (handlers[topic] || []).forEach(f => { try { f(data); } catch (e) {} });
     const wire = c => c.on("data", m => { if (m && m.topic) dispatch(m.topic, m.data); });
-    // Serveurs de relais (TURN) : sans eux, deux téléphones sur des réseaux différents (4G, box) n'arrivent souvent pas à se joindre.
-    const RTC_OPTS = {config: {iceServers: [
-      {urls: "stun:stun.l.google.com:19302"},
-      {urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject"}
-    ]}};
-    const peer = isHost ? new Peer(id, RTC_OPTS) : new Peer(undefined, RTC_OPTS);
+    const peer = isHost ? new Peer(id) : new Peer();
     const room = {
       on: (topic, fn) => { (handlers[topic] = handlers[topic] || []).push(fn); },
       emit: (topic, data) => {
