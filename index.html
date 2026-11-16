@@ -79,7 +79,15 @@ button:disabled{opacity:.35;cursor:default}
 .tile .ic{display:block;width:46%}
 .tile svg.i{width:36px;height:36px}
 .tile .ic svg.i{width:100%;height:auto}
+/* Icônes de l’accueil : même trait, mêmes bouts arrondis, même taille pour toutes les tuiles. */
+.tile svg.i{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .tile.main{cursor:pointer}
+/* Accueil : toutes les cases ont la même structure, le nom en haut (zone fixe de deux lignes) et l’icône centrée dans le reste, à la même place. */
+#grid{grid-template-rows:repeat(2,1fr)}
+#grid .tile{justify-content:flex-start;padding-top:var(--s3)}
+#grid .tile .tn{min-height:2.1em;align-self:stretch;display:flex;align-items:flex-start;justify-content:center}
+#grid .tile .ic{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+#grid .tile .ic svg.i{width:74%;height:auto;max-height:100%}
 #gate{position:fixed;inset:0;z-index:5;background:var(--bg);color:var(--ink);padding:var(--s4);max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s4);overflow-y:auto}
 #gate.hidden{display:none}
 .gateMenu{flex:1;display:flex;flex-direction:column;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
@@ -227,7 +235,7 @@ button:disabled{opacity:.35;cursor:default}
 /* Jeu numéro 2 */
 #menu2{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
 #menu2 .m2Scroll{flex:1;min-height:0;overflow-y:auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5)}
-#menu2 #m2Start{flex:none;width:calc(100% - 2 * var(--s4));margin:0 var(--s4) var(--s4)}
+#menu2 #m2Start{flex:none;width:100%;margin:var(--s5) 0 var(--s4)}
 #game2{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
 #info2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
 .t2Theme{font-size:18px;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
@@ -266,6 +274,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 
 #toast{position:fixed;left:50%;bottom:var(--s3);transform:translate(-50%,160%);transition:transform .3s var(--ease);background:var(--ink);color:var(--bg);padding:var(--s2) var(--s3);z-index:40;font-weight:700;max-width:90vw;text-align:center}
 #toast.show{transform:translate(-50%,0)}
+#toast:not(.show){visibility:hidden}
 .tryList{display:flex;flex-direction:column;gap:2px}
 .tryLine{font-size:18px;font-weight:700;opacity:.8}
 .scName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
@@ -274,6 +283,23 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .ic3 svg{width:72px;height:72px}
 .m3Title{font-size:clamp(40px,12vw,72px);font-weight:800;letter-spacing:-.04em;margin:0}
 .m3Sub{opacity:.7;margin:0;max-width:30ch}
+#stage .g3Board{position:absolute;left:0;top:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:8px;padding:10px;box-sizing:border-box;background:var(--paper)}
+#stage .g3Tile{border:3px solid var(--ink);border-radius:0;padding:0;background-color:#fff;background-repeat:no-repeat;box-shadow:0 6px 0 var(--ink);cursor:pointer;min-width:0;min-height:0;transition:transform .18s var(--ease),box-shadow .18s,border-color .3s}
+#stage .g3Tile:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+#stage .g3Tile.sel{transform:translateY(-5px);box-shadow:0 11px 0 var(--ink);outline:4px solid var(--ink);outline-offset:3px}
+#stage .g3Tile.ok{border-color:#1aa34a}
+#stage .g3Board.enter .g3Tile{animation:g3In .5s var(--ease) backwards;animation-delay:var(--d)}
+#stage .g3Board.won .g3Tile{animation:g3Win .6s var(--ease) backwards;animation-delay:var(--d)}
+@keyframes g3In{from{opacity:0;transform:scale(.5) rotate(-8deg)}to{opacity:1;transform:none}}
+@keyframes g3Win{0%{transform:scale(1)}45%{transform:scale(1.1)}100%{transform:none}}
+#stage .g3Board{transition:gap .6s var(--ease),padding .6s var(--ease)}
+#stage .g3Board.gather{gap:0;padding:0}
+#stage .g3Board.gather .g3Tile{border-width:0;border-radius:0;box-shadow:none;transition:border-width .5s,border-radius .5s,box-shadow .4s}
+#stage .g3Board.trophy{outline:6px solid #1aa34a;outline-offset:-6px;animation:g3Trophy .6s var(--ease)}
+@keyframes g3Trophy{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:none}}
+.guessRow .validBtn{padding:var(--s2) var(--s4);margin:var(--s1) 0 0 var(--s3);display:flex;align-items:center;justify-content:center;gap:var(--s1);font-weight:700;background:var(--ink);color:var(--bg);white-space:nowrap;align-self:center}
+.guessRow .validBtn .vIc{display:flex}
+.guessRow .validBtn svg{width:18px;height:18px;flex:none;fill:none;stroke:var(--bg);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -397,8 +423,8 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
     <div class="soundBox" id="m2Sound"></div>
   </div>
 
-  </div>
   <button id="m2Start" class="inv"><span id="m2StartTxt">Commencer</span> <span>→</span></button>
+  </div>
 </div>
 
 <div id="themes2" class="hidden">
@@ -489,7 +515,7 @@ const lg = o => o[LANG] || o.fr;
 /* ---------- Icônes ---------- */
 const ICON = {
   pen:    '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
-  puzzle: '<path d="M9 3h4v2a2 2 0 1 0 4 0V3h4v5h-2a2 2 0 1 0 0 4h2v5h-5v-2a2 2 0 1 0-4 0v2H4v-5h2a2 2 0 1 0 0-4H4V3z"/>',
+  puzzle: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="15.5" y="15.5" width="7" height="7" rx="1.5"/>',
   eraser: '<path d="M4 20h16"/><path d="M6 15l7-8 5 5-5 5H9z"/>',
   undo:   '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
   check:  '<path d="M4 12l5 5L20 6"/>',
@@ -1256,6 +1282,13 @@ const SFX = {
   exit:    () => whoosh(0.4, 0.07),
   chime:   () => { tone(1318, 1.4, "triangle", 0.06); tone(1976, 1.8, "sine", 0.025, 0.01); }
 };
+// Sons du jeu 3 (puzzle).
+Object.assign(SFX, {
+  g3pick: () => tone(660, 0.05, "triangle", 0.06),
+  g3swap: () => tone(420, 0.1, "sine", 0.07, 0, 640),
+  g3win:  () => { [523, 659, 784, 1046].forEach((f, k) => tone(f, 0.24, "triangle", 0.1, k * 0.09)); },
+  g3lose: () => { tone(330, 0.22, "sawtooth", 0.04); tone(247, 0.32, "sawtooth", 0.04, 0.15); }
+});
 document.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest("button")) SFX.tap(); }, true);
 
 /* ---------- État ---------- */
@@ -1281,7 +1314,7 @@ function pool(cat, diff) {
 }
 function threeWords() {
   const used = new Set(G.used);
-  const all = shuffle(pool(CFG.cat, CFG.diff));
+  const all = shuffle(G && G.g3 ? g3Pool() : pool(CFG.cat, CFG.diff));
   let c = all.filter(w => !used.has(w));
   if (c.length < 3) c = all;
   return c.slice(0, 3);
@@ -1307,17 +1340,18 @@ function applyLang() {
 /* ---------- Menu ---------- */
 function buildMenu() {
   applyLang();
-  $("mw1").textContent = LANG === "en" ? "Word to" : "Mot";
-  $("mw2").textContent = LANG === "en" ? "Draw" : "à dessiner";
+  $("mw1").textContent = GAME_SEL === 3 ? t2("Pièce", "Piece") : LANG === "en" ? "Word to" : "Mot";
+  $("mw2").textContent = GAME_SEL === 3 ? t2("par pièce", "by piece") : LANG === "en" ? "Draw" : "à dessiner";
   $("catList").replaceChildren(...catNames().map((c, i) => el("li", {},
     el("button", {class: "crow" + (CFG.cat === c ? " on" : ""),
       onclick: () => { CFG.cat = c; buildMenu(); }},
       el("span", {class: "num"}, String(i + 1).padStart(2, "0")), catLabel(c)))));
-  $("diffTabs").replaceChildren(...DIFFS.map((d, i) => el("button", {
+  if (GAME_SEL === 3 && CFG.diff === "impossible") CFG.diff = "difficile";
+  $("diffTabs").replaceChildren(...diffList().map((d, i) => el("button", {
     class: "crow" + (CFG.diff === d.id ? " on" : ""),
     onclick: () => { CFG.diff = d.id; buildMenu(); }
   }, el("span", {class: "num", html: gaugeSvg(i + 1)}), lg(d.label))));
-  $("diffNote").innerHTML = lg(DIFFS.find(d => d.id === CFG.diff).hint) + ".";
+  $("diffNote").innerHTML = lg(diffList().find(d => d.id === CFG.diff).hint) + ".";
   $("roundRows").replaceChildren(...[...ROUND_OPTS.map((n, i) => el("button", {class: "crow" + (!roundCustom && ROUNDS === n ? " on" : ""), onclick: () => { ROUNDS = n; roundCustom = false; buildMenu(); }},
     el("span", {class: "num", html: roundSvg(i + 1)}), s("rOpt", n))),
     el("button", {class: "crow sub", onclick: () => { roundCustom = true; buildMenu(); }},
@@ -1394,10 +1428,10 @@ function renderHome() {
   $("langSw").replaceChildren(...["fr", "en"].map(l => el("button", {class: "lg" + (LANG === l ? " on" : ""), onclick: () => setLang(l)}, l.toUpperCase())));
   $("grid").replaceChildren(
     el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 1; $("home").classList.add("hidden"); gateOpen(); })},
-      el("span", {class: "ic", html: svg("timer")}), el("span", {class: "tn"}, s("game"))),
-    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 2; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "ic", html: svg("pen")}), el("span", {class: "tn"}, s("game2"))),
-    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 3; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "ic", html: svg("puzzle")}), el("span", {class: "tn"}, "Jeu 3")),
-    ...DECO.slice(1).map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {html: svg(n)}))));
+      el("span", {class: "tn"}, s("game")), el("span", {class: "ic", html: svg("timer")})),
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 2; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "tn"}, s("game2")), el("span", {class: "ic", html: svg("pen")})),
+    el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 3; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "tn"}, t2("Pièce par pièce", "Piece by piece")), el("span", {class: "ic", html: svg("puzzle")})),
+    ...DECO.slice(1, 4).map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {class: "tn"}), el("span", {class: "ic", html: svg(n)}))));
 }
 function goHome() {
   ["overlay", "game", "menu", "themes", "game2", "menu2", "themes2", "gate", "game3"].forEach(id => $(id).classList.add("hidden"));
@@ -1462,7 +1496,8 @@ function playSplash() {
 /* ---------- Phases ---------- */
 function setPhase(p) {
   if (netOn() && !NETG.host) { netSend({k: "req", act: "phase", p}); return; }
-  if (p === "handover") G.found = G.names.map((_, i) => isAway1(i));
+  if (G && G.g3 && p !== "puzzle") { g3ResetStage(); $("stage").replaceChildren(cv, $("notif")); }
+  if (p === "handover") { G.found = G.names.map((_, i) => isAway1(i)); if (G.g3) { G.solved = false; G.sf = 0; } }
   if (netOn() && p === "handover") { G.options = []; strokes = []; cur = null; G.tries = []; p = "choose"; }
   G.phase = p;
   stopTimer();
@@ -1483,11 +1518,14 @@ function setPhase(p) {
   }
   else if (p === "draw") { startTimer(CFG.dur, () => finishDrawing()); }
   else if (p === "guess") {
+    if (G.g3) { g3ResetStage(); $("stage").replaceChildren(cv, $("notif")); sizeStage(); redraw(); }
     G.msg = null; G.hint = null; G.hintShown = false; G.tries = [];
     G.reveal = lettersOrder(G.word); G.revealN = 0;
     startTimer(CFG.dur, () => reveal({by: "timeout"}));
   }
-  else if (p === "end") { setTimeout(() => { if (G && G.phase === "end") setPhase("handoff"); }, 2000); }
+  else if (p === "end") { if (G.g3) { G.img = cv.toDataURL("image/png"); G.blank = g3Blank(); } setTimeout(() => { if (G && G.phase === "end") setPhase("handoff"); }, 2000); }
+  else if (p === "puzzle") g3PuzzleStart();
+  else if (p === "puzzleEnd") { /* page de transition entre le puzzle et la devinette */ }
   else if (p === "handoff" && netOn()) { setTimeout(() => { if (G && G.phase === "handoff") setPhase("guess"); }, 1800); }
   panelSig = ""; ovSig = "";
   render();
@@ -1504,6 +1542,7 @@ function reveal(result) {
 // Un devineur trouve : il gagne 10 points, le dessinateur 5 de base + un bonus de vitesse.
 // La manche finit quand tous les devineurs ont trouvé, ou au temps.
 function markFound(i) {
+  if (G && G.g3) return g3Found(i);
   if (!G || G.phase !== "guess" || G.found[i]) return;
   const left = Math.max(0, (timer.end - Date.now()) / 1000);
   const bonus = Math.min(5, Math.max(0, Math.floor((5 * left) / timer.total + 0.1)));
@@ -1514,13 +1553,16 @@ function markFound(i) {
   else { G.msg = null; panelSig = ""; render(); }
 }
 function finishGame() { stopTimer(); G.phase = "final"; ovSig = ""; panelSig = ""; render(); }
+// Une manche = un tour de chaque joueur : « 4 manches » = 4 dessins et 4 devinettes pour chacun.
+// G.round compte les tours (un par dessin), donc la partie dure ROUNDS × nombre de joueurs tours.
 function nextRound() {
   if (netOn() && !NETG.host) { netSend({k: "req", act: "next"}); return; }
-  if (G.round >= ROUNDS) { finishGame(); return; }
+  const total = ROUNDS * G.names.length;
+  if (G.round >= total) { finishGame(); return; }
   G.round += 1;
   G.drawer = (G.round - 1) % G.names.length;
   while (isAway1(G.drawer)) {
-    if (G.round >= ROUNDS) { finishGame(); return; }
+    if (G.round >= total) { finishGame(); return; }
     G.round += 1; G.drawer = (G.round - 1) % G.names.length;
   }
   G.used = [...G.used, G.word].slice(-60);
@@ -1567,8 +1609,8 @@ function tick() {
     const n = revealTarget(left);
     if (n > G.revealN) { G.revealN = n; updatePattern(); SFX.hint(); }
   }
-  const hintAt = {facile: 7, moyen: 15, difficile: 20, impossible: 30}[CFG.diff];
-  if (G && G.phase === "guess" && !(netOn() && !NETG.host) && !G.hintShown && hintAt && left <= hintAt && left > 0) {
+  const hintAt = CFG.dur / 4;
+  if (G && G.phase === "guess" && !(netOn() && !NETG.host) && !G.hintShown && left <= hintAt && left > 0) {
     G.hintShown = true;
     G.hint = makeHint(G.word);
     SFX.hint();
@@ -1594,7 +1636,7 @@ function render() {
   $("info").replaceChildren(...G.names.map((_, i) => el("div", {class: "sc"},
     el("div", {class: "scName"}, el("span", {class: "scIco", html: svg(G.drawer === i ? "pen" : "eye")}), G.names[i]),
     el("div", {class: "scNum"}, fmtPts(G.pts[i])))));
-  const fullScreen = ["handover", "choose", "end", "handoff", "reveal", "final"].includes(G.phase) && !(netOn() && G.phase === "handoff" && isDrawerMe());
+  const fullScreen = ["handover", "choose", "end", "handoff", "puzzleEnd", "reveal", "final"].includes(G.phase) && !(netOn() && G.phase === "handoff" && isDrawerMe());
   if (fullScreen) {
     const sig = [G.phase, G.round, G.word, G.result && G.result.by, G.pts.join(","), G.options.join(","), LANG].join("|");
     if (sig !== ovSig) { ovSig = sig; $("overlay").classList.remove("hidden"); renderOverlay(); }
@@ -1619,14 +1661,24 @@ function renderOverlay() {
     const isHandoff = g.phase === "handoff";
     const who = isHandoff ? guesser() : drawer();
     if (isHandoff) ov.classList.add("inv");
+    const g3 = !!g.g3 && isHandoff;
     ov.append(menuBar(),
       el("div", {class:"ov-top"},
-        el("div", {class:"ov-phone rise", html: svg("phone")}),
-        el("div", {class:"kicker rise d1"}, isHandoff ? s("kGuess") : s("kDraw")),
-        el("h2", {class:"ov-title rise d1"}, s("pass", who)),
-        el("p", {class:"ov-sub rise d2"}, isHandoff ? s("passGuess") : s("passDraw"))),
-      el("button", {class:"ov-cta rise d2", onclick: () => isHandoff ? setPhase("guess") : setPhase("choose")},
-        isHandoff ? s("ctaGuess") : s("ctaDraw"), el("span", {html: svg("arrow")})));
+        el("div", {class:"ov-phone pop", html: svg("phone")}),
+        el("div", {class:"kicker rise d1"}, g3 ? t2(`Étape 2 sur 3 · puzzle`, `Step 2 of 3 · puzzle`) : isHandoff ? s("kGuess") : s("kDraw")),
+        el("h2", {class:"ov-title rise d2"}, g3 ? t2(`${who}, c’est à toi.`, `${who}, it’s your turn.`) : s("pass", who)),
+        el("p", {class:"ov-sub rise d3"}, g3 ? t2(`Tu fais le puzzle du dessin de ${drawer()} : remets les 9 morceaux dans l’ordre. Ensuite tu trouves le mot.`, `You solve ${drawer()}’s puzzle: put the 9 pieces back in order. Then you find the word.`) : isHandoff ? s("passGuess") : s("passDraw"))),
+      el("button", {class:"ov-cta rise d2", onclick: () => isHandoff ? setPhase(g.g3 ? "puzzle" : "guess") : setPhase("choose")},
+        g3 ? t2("Commencer le puzzle", "Start the puzzle") : isHandoff ? s("ctaGuess") : s("ctaDraw"), el("span", {html: svg("arrow")})));
+  } else if (g.phase === "puzzleEnd") {
+    const ok = !!g.solved;
+    ov.append(menuBar(),
+      el("div", {class:"ov-top"},
+        el("div", {class:"ov-phone pop", html: svg(ok ? "check" : "timer")}),
+        el("div", {class:"kicker rise d1"}, ok ? t2("Étape 3 sur 3 · le mot", "Step 3 of 3 · the word") : t2("Temps écoulé", "Time’s up")),
+        el("h2", {class:"ov-title rise d2"}, ok ? t2("Puzzle réussi !", "Puzzle solved!") : t2("Puzzle non fini", "Puzzle unfinished")),
+        el("p", {class:"ov-sub rise d3"}, t2(`${guesser()}, c’est à toi : trouve le mot du dessin de ${drawer()}.`, `${guesser()}, it’s your turn: find ${drawer()}’s word.`))),
+      el("button", {class:"ov-cta rise d3", onclick: () => setPhase("guess")}, t2("Deviner le mot", "Guess the word"), el("span", {html: svg("arrow")})));
   } else if (g.phase === "choose") {
     ov.append(el("div", {class:"ov-bar ov-bar2"}, el("span", {id:"ovTimer", class:"ov-count"}), el("button", {class:"pill", onclick: goMenu}, s("menu"))), el("div", {class:"ov-top"},
       el("div", {class:"kicker rise"}, netOn() && !isDrawerMe() ? t2(`${drawer()} choisit un mot…`, `${drawer()} is picking a word…`) : s("choose", drawer())),
@@ -1703,6 +1755,8 @@ function renderPanel() {
       colorOpen ? paletteRow() : null
     ];
     pn.append(...kids.filter(Boolean));
+  } else if (g.phase === "puzzle") {
+    pn.append(el("div", {class:"wordline"}, el("span", {class:"kicker"}, G.solved ? t2("Puzzle réussi !", "Puzzle solved!") : t2("Remets les morceaux dans l’ordre", "Put the pieces back in order"))));
   } else if (g.phase === "guess" && netOn() && isDrawerMe()) {
     pn.append(el("div", {class:"patRow"}, patternEl(), el("span", {class:"count"}, `(${countLabel()})`)), el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2("Ils devinent…", "They’re guessing…"))));
   } else if (g.phase === "guess" && netOn() && G.found[NETG.me]) {
@@ -1714,7 +1768,7 @@ function renderPanel() {
       el("div", {class:"patRow"},
         patternEl(),
         el("span", {class:"count"}, `(${countLabel()})`)),
-      el("div", {class:"guessRow"}, input, el("button", {onclick: submitGuess, html: svg("send", "i")})),
+      el("div", {class:"guessRow"}, input, el("button", {class:"validBtn", onclick: submitGuess}, el("span", {class:"vIc", html: svg("check")}), t2("Valider", "Check"))),
       el("div", {id:"feedback"}),
       el("div", {id:"hint", class:"hintLine"}));
   }
@@ -1767,13 +1821,12 @@ function lettersOrder(w) {
   [...w].forEach((c, i) => { if (/[\p{L}\p{N}]/u.test(c)) idx.push(i); });
   return shuffle(idx);
 }
+// Lettres révélées selon la part de temps restante : facile 1/2 ; moyen 1/2 puis 1/3 ; difficile et impossible 1/2, 1/3, 1/4.
 function revealTarget(left) {
-  const t = CFG.dur;
-  if (CFG.diff === "facile") return left <= t / 2 ? 1 : 0;
-  if (CFG.diff === "moyen") return left <= t / 2 ? 1 : 0;
-  if (CFG.diff === "difficile") return left <= 10 ? 3 : left <= 20 ? 2 : left <= 40 ? 1 : 0;
-  if (CFG.diff === "impossible") return left <= t / 4 ? 3 : left <= t / 3 ? 2 : left <= t / 2 ? 1 : 0;
-  return 0;
+  const f = left / CFG.dur;
+  if (CFG.diff === "facile") return f <= 1 / 2 ? 1 : 0;
+  if (CFG.diff === "moyen") return f <= 1 / 3 ? 2 : f <= 1 / 2 ? 1 : 0;
+  return f <= 1 / 4 ? 3 : f <= 1 / 3 ? 2 : f <= 1 / 2 ? 1 : 0;
 }
 // Motif : lettres cachées en « _ », lettres déjà révélées affichées.
 function maskWord() {
@@ -2621,18 +2674,7 @@ function gateBack() {
 function gateLocal() {
   $("gate").classList.add("hidden");
   if (GAME_SEL === 2) { openGame2(); return; }
-  if (GAME_SEL === 3) { openGame3(); return; }
-  setNamesVisible(true); goMenu();
-}
-// Jeu 3 : page « même téléphone » (squelette, le jeu n’est pas encore écrit).
-function openGame3() { $("home").classList.add("hidden"); buildGame3(); $("game3").classList.remove("hidden"); }
-function buildGame3() {
-  $("game3").replaceChildren(
-    el("div", {class: "menuTop"}, el("button", {class: "pill", onclick: goHome}, t2("← Accueil", "← Home"))),
-    el("div", {class: "m3Body"},
-      el("div", {class: "ic3", html: svg("puzzle")}),
-      el("h1", {class: "m3Title"}, "Jeu 3"),
-      el("p", {class: "m3Sub"}, t2("Sur le même téléphone. Le jeu n’est pas encore écrit.", "On this phone. The game is not written yet."))));
+  setNamesVisible(true); goMenu(); // Jeu 3 : même menu que le jeu 1
 }
 async function gateConnect(code, role, name) {
   gSave(name);
@@ -2670,7 +2712,7 @@ function gateRender() {
   const head = [
     el("div", {class: "menuTop"}, el("button", {class: "pill", onclick: gateBack}, GATE === "menu" ? s("back") : s("backBtn"))),
     el("div", {class: "poster"}, el("div", {class: "kicker"}, t2("Choisis ton mode", "Choose your mode")),
-      el("h1", {}, el("span", {class: "w1"}, GAME_SEL === 3 ? "Jeu" : GAME_SEL === 2 ? t2("Trait pour", "Line by") : t2("Mot", "Word to")), el("br", {}), el("span", {class: "w2"}, GAME_SEL === 3 ? "3" : GAME_SEL === 2 ? t2("trait", "line") : t2("à dessiner", "draw"))))
+      el("h1", {}, el("span", {class: "w1"}, GAME_SEL === 3 ? t2("Pièce", "Piece") : GAME_SEL === 2 ? t2("Trait pour", "Line by") : t2("Mot", "Word to")), el("br", {}), el("span", {class: "w2"}, GAME_SEL === 3 ? t2("par pièce", "by piece") : GAME_SEL === 2 ? t2("trait", "line") : t2("à dessiner", "draw"))))
   ];
   let body;
   if (GATE === "menu") {
@@ -2706,7 +2748,7 @@ function gateRender() {
     if (GATE === "host") {
       body.push(names.length < 2
         ? el("div", {class: "kicker"}, t2("En attente de ton ami…", "Waiting for your friend…"))
-        : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); if (GAME_SEL === 2) openGame2(); else if (GAME_SEL === 3) toast(t2("Jeu 3 : pas encore jouable en ligne.", "Game 3: not playable online yet.")); else { goMenu(); setNamesVisible(false); } }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
+        : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); if (GAME_SEL === 2) openGame2(); else { goMenu(); setNamesVisible(false); } }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
     } else if (LB.started && LB.settings) {
       const d = DIFFS.find(x => x.id === LB.settings.diff);
       body.push(el("div", {class: "kicker"}, `${catLabel(LB.settings.cat)} · ${lg(d.label)} · ${LB.settings.sec} s · ${LB.settings.rounds}`));
@@ -2720,10 +2762,145 @@ function gateRender() {
   const showStatus = true;
   g.replaceChildren(...head, ...body, ...(showStatus && LB.status ? [el("div", {class: "kicker"}, LB.status)] : []));
 }
+/* ---------- Jeu 3 : même écran et même DA que le jeu 1 ----------
+   Une manche = un dessin (le dessinateur, puis les mots et le tracé comme au jeu 1),
+   puis le puzzle du dessin par l’autre joueur (9 pièces), puis la devinette du mot.
+   Points (en dixièmes, comme le jeu 1) : puzzle réussi = 1 au devineur et 0,5 au dessinateur ;
+   mot trouvé = 1 au devineur et 0,5 au dessinateur ; bonus 0 à 1 au dessinateur si les deux sont réussis. */
+const G3_DIFFS = [
+  {id:"facile", sec:30, label:{fr:"Facile", en:"Easy"}, hint:{fr:"<b>30 s</b> pour dessiner, <b>30 s</b> pour le puzzle, <b>30 s</b> pour le mot", en:"<b>30 s</b> to draw, <b>30 s</b> for the puzzle, <b>30 s</b> for the word"}},
+  {id:"moyen", sec:60, label:{fr:"Moyen", en:"Medium"}, hint:{fr:"<b>1 min</b> pour dessiner, <b>1 min</b> pour le puzzle, <b>1 min</b> pour le mot", en:"<b>1 min</b> to draw, <b>1 min</b> for the puzzle, <b>1 min</b> for the word"}},
+  {id:"difficile", sec:90, label:{fr:"Difficile", en:"Hard"}, hint:{fr:"<b>1 min 30</b> pour dessiner, <b>1 min 30</b> pour le puzzle, <b>1 min 30</b> pour le mot", en:"<b>1 min 30</b> to draw, <b>1 min 30</b> for the puzzle, <b>1 min 30</b> for the word"}}
+];
+const diffList = () => GAME_SEL === 3 ? G3_DIFFS : DIFFS;
+function start3Local() {
+  const n1 = $("n1").value.trim().slice(0, 20) || s("p1");
+  const n2 = $("n2").value.trim().slice(0, 20) || s("p2");
+  if (!G3_DIFFS.some(d => d.id === CFG.diff)) CFG.diff = "difficile";
+  CFG.dur = G3_DIFFS.find(d => d.id === CFG.diff).sec;
+  G = {g3: true, names: [n1, n2], drawer: 0, round: 1, pts: [0, 0], found: [false, false], used: [], word: null, options: [], phase: "handover", result: null, img: null, solved: false, sf: 0};
+  showGame();
+  setPhase("handover");
+}
+// Mots du jeu 3 : un niveau plus facile que le jeu 1 (facile = facile ; moyen = facile + moyen ; difficile = moyen + difficile).
+function g3Pool() {
+  const lv = {facile: ["facile"], moyen: ["facile", "moyen"], difficile: ["moyen", "difficile"]}[CFG.diff] || ["facile"];
+  const data = WORDS();
+  const cats = CFG.cat === "Au hasard" ? Object.keys(data) : [CFG.cat];
+  const out = new Set();
+  for (const c of cats) for (const l of lv) for (const w of (data[c]?.[l] || [])) out.add(w);
+  return [...out];
+}
+// Détection : pour chaque case de 3×3, la case est « vide » si elle ne contient aucun trait.
+function g3Blank() {
+  const ctx2 = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const d = ctx2.getImageData(0, 0, W, H).data;
+  const out = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    const x0 = Math.floor(c * W / 3), x1 = Math.floor((c + 1) * W / 3), y0 = Math.floor(r * H / 3), y1 = Math.floor((r + 1) * H / 3);
+    let drawn = false;
+    for (let y = y0; y < y1 && !drawn; y += 2) for (let x = x0; x < x1; x += 2) {
+      const i = (y * W + x) * 4;
+      if (d[i] < 235 || d[i + 1] < 235 || d[i + 2] < 235) { drawn = true; break; }
+    }
+    out.push(!drawn);
+  }
+  return out;
+}
+function g3ResetStage() { Object.assign($("stage").style, {position: "", left: "", top: "", transform: "", zIndex: ""}); }
+// Puzzle : les 9 morceaux recouvrent toute la zone du dessin ; on tape deux morceaux pour les échanger.
+function g3PuzzleStart() {
+  G.solved = false; G.sf = 0;
+  const img = G.img;
+  const fresh = () => { let o = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]); for (let t = 0; t < 60 && isSolved(o); t++) o = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]); return o; };
+  const blank = G.blank || new Array(9).fill(false);
+  const isSolved = o => o.every((p, j) => blank[p] ? blank[j] : p === j);
+  let order = fresh(), sel = null;
+  const board = el("div", {class: "g3Board enter"});
+  const draw = () => {
+    board.replaceChildren(...order.map((piece, k) => {
+      const t = el("button", {class: "g3Tile" + (sel === k ? " sel" : "") + ((blank[piece] ? blank[k] : piece === k) ? " ok" : ""), onclick: () => tap(k)});
+      t.style.backgroundImage = `url("${img}")`;
+      t.style.backgroundSize = "300% 300%";
+      t.style.backgroundPosition = `${(piece % 3) * 50}% ${Math.floor(piece / 3) * 50}%`;
+      t.style.setProperty("--d", (k * 0.06).toFixed(2) + "s");
+      return t;
+    }));
+  };
+  const tap = k => {
+    if (!G || G.phase !== "puzzle" || G.solved) return;
+    if (sel === null) { sel = k; SFX.g3pick(); }
+    else if (sel === k) { sel = null; SFX.g3pick(); }
+    else {
+      [order[sel], order[k]] = [order[k], order[sel]]; sel = null;
+      SFX.g3swap();
+      if (isSolved(order)) {
+        // On affiche d’abord le dernier déplacement, puis on lance la fête une fois que tout est en place.
+        G.solved = true; draw();
+        setTimeout(() => { if (G && G.phase === "puzzle") g3Solved(); }, 650);
+        return;
+      }
+    }
+    draw();
+  };
+  // Le rectangle du puzzle est au milieu de l’écran, à la taille qui tient dans la zone.
+  const st = $("stage");
+  const sw0 = parseFloat(st.style.width) || 300, sh0 = parseFloat(st.style.height) || 300;
+  const k = Math.min((window.innerWidth - 32) / sw0, (window.innerHeight * 0.8) / sh0);
+  const sw = Math.round(sw0 * k), sh = Math.round(sh0 * k);
+  Object.assign(st.style, {position: "fixed", left: "50%", top: "50%", transform: "translate(-50%,-50%)", zIndex: "5", width: sw + "px", height: sh + "px"});
+  board.style.width = sw + "px"; board.style.height = sh + "px";
+  st.replaceChildren(board, $("notif"));
+  draw();
+  setTimeout(() => board.classList.remove("enter"), 1100);
+  startTimer(CFG.dur, () => { if (G && G.phase === "puzzle") g3PuzzleEnd(false); });
+}
+function g3PuzzleEnd(ok) {
+  if (!G || G.phase !== "puzzle") return;
+  stopTimer();
+  G.solved = !!ok;
+  if (ok) { setPhase("guess"); return; }   // puzzle réussi : on enchaîne directement sur le mot
+  SFX.g3lose();
+  setPhase("puzzleEnd");                   // temps écoulé : page de transition
+}
+function g3Solved() {
+  const left = Math.max(0, (timer.end - Date.now()) / 1000 / timer.total);
+  stopTimer();
+  G.solved = true; G.sf = left;
+  G.pts[others()[0]] += 10; G.pts[G.drawer] += 5;
+  SFX.g3win(); confetti();
+  // Trophée : les morceaux se rassemblent en un seul dessin entier, encadré, puis on passe au mot.
+  const b = document.querySelector("#stage .g3Board");
+  if (b) {
+    b.classList.add("won");
+    [...b.children].forEach((t, k) => { t.style.setProperty("--d", (k * 0.05).toFixed(2) + "s"); t.classList.add("ok"); });
+    setTimeout(() => b.classList.add("gather"), 500);
+    setTimeout(() => b.classList.add("trophy"), 1100);
+  }
+  setTimeout(() => { if (G && G.phase === "puzzle") g3PuzzleEnd(true); }, 2300);
+}
+// Devinette réussie : le devineur gagne 1 point, le dessinateur 0,5, plus le bonus de rapidité.
+function g3Found(i) {
+  if (!G || G.phase !== "guess" || G.found[i]) return;
+  const gf = Math.max(0, (timer.end - Date.now()) / 1000 / timer.total);
+  G.found[i] = true;
+  G.pts[i] += 10; G.pts[G.drawer] += 5;
+  if (G.solved) G.pts[G.drawer] += Math.round(10 * (G.sf + gf) / 2);
+  SFX.found(); confetti();
+  if (others().every(k => G.found[k])) reveal({by: "found"}); else { G.msg = null; panelSig = ""; render(); }
+}
+
 // Démarrage en ligne : l'hôte envoie les réglages, les prénoms et les identifiants, puis le compte à rebours lance la partie.
 const startLocal1 = $("start").onclick;
 let startBusy1 = false;
 $("start").onclick = e => {
+  if (GAME_SEL === 3) {
+    if (LB.room) { toast(t2("Jeu 3 en ligne : prochaine étape.", "Game 3 online: next step.")); return; }
+    if (startBusy1) return;
+    startBusy1 = true;
+    countdown2(() => { startBusy1 = false; start3Local(); });
+    return;
+  }
   if (!LB.room || LB.role !== "host") {
     // Même téléphone : même décompte 3-2-1-GO que en ligne, puis la partie.
     if (startBusy1) return;
