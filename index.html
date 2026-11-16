@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!doctype html>
 <html lang="fr">
 <head>
@@ -84,10 +85,13 @@ button:disabled{opacity:.35;cursor:default}
 .tile.main{cursor:pointer}
 /* Accueil : toutes les cases ont la même structure, le nom en haut (zone fixe de deux lignes) et l’icône centrée dans le reste, à la même place. */
 #grid{grid-template-rows:repeat(2,1fr)}
-#grid .tile{justify-content:flex-start;padding-top:var(--s3)}
-#grid .tile .tn{min-height:2.1em;align-self:stretch;display:flex;align-items:flex-start;justify-content:center}
-#grid .tile .ic{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+#grid .tile{position:relative;justify-content:center;padding:var(--s3)}
+#grid .tile .tn{position:absolute;top:var(--s3);left:var(--s2);right:var(--s2);min-height:0;display:block}
+#grid .tile .ic{position:absolute;inset:0;width:100%;display:flex;align-items:center;justify-content:center}
 #grid .tile .ic svg.i{width:74%;height:auto;max-height:100%}
+/* Icônes des trois jeux : 30 % plus petites (70 % de la taille précédente, 74 % × 0,7 ≈ 52 %). */
+#grid .tile.main .ic svg.i{width:44%}
+#grid .tile svg.solid{fill:currentColor;stroke:none}
 #gate{position:fixed;inset:0;z-index:5;background:var(--bg);color:var(--ink);padding:var(--s4);max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s4);overflow-y:auto}
 #gate.hidden{display:none}
 .gateMenu{flex:1;display:flex;flex-direction:column;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
@@ -283,6 +287,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .ic3 svg{width:72px;height:72px}
 .m3Title{font-size:clamp(40px,12vw,72px);font-weight:800;letter-spacing:-.04em;margin:0}
 .m3Sub{opacity:.7;margin:0;max-width:30ch}
+#stage.g3hide canvas{visibility:hidden}
 #stage .g3Board{position:absolute;left:0;top:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:8px;padding:10px;box-sizing:border-box;background:var(--paper)}
 #stage .g3Tile{border:3px solid var(--ink);border-radius:0;padding:0;background-color:#fff;background-repeat:no-repeat;box-shadow:0 6px 0 var(--ink);cursor:pointer;min-width:0;min-height:0;transition:transform .18s var(--ease),box-shadow .18s,border-color .3s}
 #stage .g3Tile:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
@@ -515,6 +520,9 @@ const lg = o => o[LANG] || o.fr;
 /* ---------- Icônes ---------- */
 const ICON = {
   pen:    '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  timerS: '<circle cx="12" cy="13" r="8"/><path d="M9 1.5h6v3H9z"/><path d="M11 2.5h2v2h-2z"/>',
+  penS:   '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
+  puzzleS: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="15.5" y="15.5" width="7" height="7" rx="1.5"/>',
   puzzle: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="15.5" y="15.5" width="7" height="7" rx="1.5"/>',
   eraser: '<path d="M4 20h16"/><path d="M6 15l7-8 5 5-5 5H9z"/>',
   undo:   '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
@@ -1431,7 +1439,7 @@ function renderHome() {
       el("span", {class: "tn"}, s("game")), el("span", {class: "ic", html: svg("timer")})),
     el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 2; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "tn"}, s("game2")), el("span", {class: "ic", html: svg("pen")})),
     el("button", {class: "tile main rise", onclick: e => transitionTo(e.currentTarget, () => { GAME_SEL = 3; $("home").classList.add("hidden"); gateOpen(); })}, el("span", {class: "tn"}, t2("Pièce par pièce", "Piece by piece")), el("span", {class: "ic", html: svg("puzzle")})),
-    ...DECO.slice(1, 4).map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {class: "tn"}), el("span", {class: "ic", html: svg(n)}))));
+    ...DECO.slice(1, 4).map((n, i) => el("div", {class: "tile rise", "aria-hidden": "true", style: `animation-delay:${(0.12 + i * 0.05).toFixed(2)}s`}, el("span", {class: "tn"}))));
 }
 function goHome() {
   ["overlay", "game", "menu", "themes", "game2", "menu2", "themes2", "gate", "game3"].forEach(id => $(id).classList.add("hidden"));
@@ -1501,6 +1509,7 @@ function setPhase(p) {
   if (netOn() && p === "handover") { G.options = []; strokes = []; cur = null; G.tries = []; p = "choose"; }
   G.phase = p;
   stopTimer();
+  if (p === "handoff" && G.g3 && !netOn()) G.puzzler = others()[0];   // à deux, en local : l’autre joueur
   if (p === "handover" || p === "handoff") SFX.swoosh();
   else if (p === "draw" || p === "guess") SFX.start();
   else if (p === "end") SFX.done();
@@ -1517,6 +1526,12 @@ function setPhase(p) {
     startTimer(30, () => pickWord(G.options[Math.floor(Math.random() * G.options.length)]));
   }
   else if (p === "draw") { startTimer(CFG.dur, () => finishDrawing()); }
+  else if (p === "handoff" && G.g3 && netOn()) {
+    // En ligne, pas de bouton : compte à rebours 3-2-1-GO, puis le puzzle démarre tout seul.
+    G.puzzler = pickPuzzler();
+    if (G.puzzler < 0) { reveal({by: "timeout"}); return; }
+    startTimer(3, () => { if (G && G.phase === "handoff") setPhase("puzzle"); });
+  }
   else if (p === "guess") {
     if (G.g3) { g3ResetStage(); $("stage").replaceChildren(cv, $("notif")); sizeStage(); redraw(); }
     G.msg = null; G.hint = null; G.hintShown = false; G.tries = [];
@@ -1524,8 +1539,15 @@ function setPhase(p) {
     startTimer(CFG.dur, () => reveal({by: "timeout"}));
   }
   else if (p === "end") { if (G.g3) { G.img = cv.toDataURL("image/png"); G.blank = g3Blank(); } setTimeout(() => { if (G && G.phase === "end") setPhase("handoff"); }, 2000); }
-  else if (p === "puzzle") g3PuzzleStart();
-  else if (p === "puzzleEnd") { /* page de transition entre le puzzle et la devinette */ }
+  else if (p === "puzzle") {
+    // Le plateau n’existe que sur le téléphone de celui qui fait le puzzle ; l’hôte garde le temps pour tous.
+    if (isPuzzlerMe()) g3PuzzleStart();
+    else startTimer(CFG.dur, () => { if (G && G.phase === "puzzle") g3PuzzleEnd(false); });
+  }
+  else if (p === "puzzleEnd") {
+    // Page de transition entre le puzzle et la devinette ; en ligne, elle passe toute seule.
+    if (netOn()) startTimer(3, () => { if (G && G.phase === "puzzleEnd") setPhase("guess"); });
+  }
   else if (p === "handoff" && netOn()) { setTimeout(() => { if (G && G.phase === "handoff") setPhase("guess"); }, 1800); }
   panelSig = ""; ovSig = "";
   render();
@@ -1537,6 +1559,8 @@ function reveal(result) {
   stopTimer();
   G.phase = "reveal";
   panelSig = ""; ovSig = "";
+  // Jeu 3 en ligne : pas de bouton, la manche suivante part toute seule au bout de quelques secondes.
+  if (netOn() && NETG.host && G.g3) startTimer(5, () => { if (G && G.phase === "reveal") nextRound(); });
   render();
 }
 // Un devineur trouve : il gagne 10 points, le dessinateur 5 de base + un bonus de vitesse.
@@ -1598,6 +1622,8 @@ function tick() {
   t.textContent = left + s("timeUnit");
   const ot = $("ovTimer");
   if (ot) ot.textContent = left + s("timeUnit");
+  const go = $("ovGo");
+  if (go) go.textContent = left > 0 ? String(left) : "GO !";
   const t2el = $("timer2");
   if (t2el) { t2el.textContent = left + s("timeUnit"); t2el.classList.toggle("urgent", left <= WARN_AT); }
   t.classList.toggle("urgent", left <= WARN_AT);
@@ -1636,7 +1662,11 @@ function render() {
   $("info").replaceChildren(...G.names.map((_, i) => el("div", {class: "sc"},
     el("div", {class: "scName"}, el("span", {class: "scIco", html: svg(G.drawer === i ? "pen" : "eye")}), G.names[i]),
     el("div", {class: "scNum"}, fmtPts(G.pts[i])))));
-  const fullScreen = ["handover", "choose", "end", "handoff", "puzzleEnd", "reveal", "final"].includes(G.phase) && !(netOn() && G.phase === "handoff" && isDrawerMe());
+  const g3net = netOn() && G.g3;
+  const fullScreen = (["handover", "choose", "end", "handoff", "puzzleEnd", "reveal", "final"].includes(G.phase) && !(netOn() && !g3net && G.phase === "handoff" && isDrawerMe()))
+    || (g3net && G.phase === "puzzle" && !isPuzzlerMe());
+  // Jeu 3 en ligne : le dessin reste caché à ceux qui ne dessinent pas, jusqu’à la devinette.
+  $("stage").classList.toggle("g3hide", !!(g3net && G.phase === "draw" && !isDrawerMe()));
   if (fullScreen) {
     const sig = [G.phase, G.round, G.word, G.result && G.result.by, G.pts.join(","), G.options.join(","), LANG].join("|");
     if (sig !== ovSig) { ovSig = sig; $("overlay").classList.remove("hidden"); renderOverlay(); }
@@ -1656,6 +1686,7 @@ function renderOverlay() {
   const g = G, ov = $("overlay");
   ov.replaceChildren();
   ov.className = "";
+  if (netOn() && g.g3 && ["handoff", "puzzle", "puzzleEnd"].includes(g.phase)) { renderG3Net(); return; }
   if (netOn() && (g.phase === "handover" || g.phase === "handoff")) { renderNetTurn(); return; }
   if (g.phase === "handover" || g.phase === "handoff") {
     const isHandoff = g.phase === "handoff";
@@ -1714,8 +1745,39 @@ function renderOverlay() {
     const found = g.result && g.result.by === "found";
     ov.append(menuBar(), el("div", {class:"ov-top"},
       el("div", {class:"kicker rise"}, found ? (G.names.length > 2 ? t2("Tout le monde a trouvé !", "Everyone found it!") : s("found", guesser())) : s("timeout")),
-      el("div", {class:"ov-big", style: `font-size:${Math.min(15, 110 / Math.max(4, g.word.length))}vw;overflow-wrap:anywhere`}, g.word.toUpperCase())),
-      el("button", {class:"ov-cta rise d2", onclick: nextRound}, s("next"), el("span", {html: svg("arrow")})));
+      el("div", {class:"ov-big", style: `font-size:${Math.min(15, 110 / Math.max(4, g.word.length))}vw;overflow-wrap:anywhere`}, g.word.toUpperCase()),
+      netOn() && g.g3 ? el("div", {id:"ovTimer", class:"ov-count rise d2"}) : null),
+      netOn() && g.g3 ? "" : el("button", {class:"ov-cta rise d2", onclick: nextRound}, s("next"), el("span", {html: svg("arrow")})));
+  }
+}
+// Jeu 3 en ligne : les écrans de passage du téléphone, sans bouton (tout s’enchaîne seul).
+function renderG3Net() {
+  const g = G, ov = $("overlay");
+  const pz = g.names[g.puzzler] || "", dr = g.names[g.drawer] || "";
+  const me = isPuzzlerMe();
+  if (g.phase === "handoff") {
+    ov.classList.add("inv");
+    ov.append(menuBar(), el("div", {class:"ov-top"},
+      el("div", {class:"ov-phone pop", html: svg("phone")}),
+      el("div", {class:"kicker rise d1"}, t2("Étape 2 sur 3 · puzzle", "Step 2 of 3 · puzzle")),
+      el("h2", {class:"ov-title rise d2"}, me ? t2(`${pz}, c’est à toi !`, `${pz}, it’s your turn!`) : t2(`${pz} fait le puzzle`, `${pz} is solving the puzzle`)),
+      el("p", {class:"ov-sub rise d3"}, me ? t2(`Remets les 9 morceaux du dessin de ${dr} dans l’ordre.`, `Put the 9 pieces of ${dr}’s drawing back in order.`) : t2(`Le dessin de ${dr} reste caché jusqu’à la devinette.`, `${dr}’s drawing stays hidden until the guessing.`)),
+      el("div", {id:"ovGo", class:"ov-big rise d3"}, "3")));
+  } else if (g.phase === "puzzle") {
+    // Les autres attendent : le plateau est sur le téléphone de celui qui fait le puzzle.
+    ov.classList.add("inv");
+    ov.append(menuBar(), el("div", {class:"ov-top"},
+      el("div", {class:"kicker rise"}, t2("Étape 2 sur 3 · puzzle", "Step 2 of 3 · puzzle")),
+      el("h2", {class:"ov-title rise d1"}, t2(`${pz} fait le puzzle…`, `${pz} is solving the puzzle…`)),
+      el("p", {class:"ov-sub rise d2"}, t2(`Le dessin de ${dr} est caché. Tu trouveras le mot ensuite.`, `${dr}’s drawing is hidden. You’ll find the word next.`))));
+  } else if (g.phase === "puzzleEnd") {
+    const ok = !!g.solved;
+    ov.append(menuBar(), el("div", {class:"ov-top"},
+      el("div", {class:"ov-phone pop", html: svg(ok ? "check" : "timer")}),
+      el("div", {class:"kicker rise d1"}, ok ? t2("Étape 3 sur 3 · le mot", "Step 3 of 3 · the word") : t2("Temps écoulé", "Time’s up")),
+      el("h2", {class:"ov-title rise d2"}, ok ? t2("Puzzle réussi !", "Puzzle solved!") : t2("Puzzle non fini", "Puzzle unfinished")),
+      el("p", {class:"ov-sub rise d3"}, t2(`Tout le monde cherche le mot du dessin de ${dr}.`, `Everyone is looking for ${dr}’s word.`)),
+      el("div", {id:"ovTimer", class:"ov-count rise d3"})));
   }
 }
 
@@ -1755,6 +1817,8 @@ function renderPanel() {
       colorOpen ? paletteRow() : null
     ];
     pn.append(...kids.filter(Boolean));
+  } else if (g.phase === "puzzle" && netOn() && !isPuzzlerMe()) {
+    pn.append(el("div", {class:"wordline"}, el("span", {class:"kicker"}, t2(`${G.names[G.puzzler] || ""} fait le puzzle…`, `${G.names[G.puzzler] || ""} is solving the puzzle…`))));
   } else if (g.phase === "puzzle") {
     pn.append(el("div", {class:"wordline"}, el("span", {class:"kicker"}, G.solved ? t2("Puzzle réussi !", "Puzzle solved!") : t2("Remets les morceaux dans l’ordre", "Put the pieces back in order"))));
   } else if (g.phase === "guess" && netOn() && isDrawerMe()) {
@@ -1905,6 +1969,7 @@ function redraw() {
 }
 // Taille figée au lancement : le clavier ne doit pas redimensionner la zone de dessin.
 function sizeStage() {
+  if (G && G.g3 && G.phase === "puzzle") return;   // le puzzle a sa propre taille, centrée
   const top = document.querySelector("#game .top").offsetHeight;
   const panel = $("panel").offsetHeight || 152;
   let w = window.innerWidth - 16;
@@ -2644,10 +2709,11 @@ function lbOnMsg(m) {
       LB.last = m.name; LB.lastT = Date.now();
       setTimeout(lbRender, 3100);
     }
-    LB.room.emit("lobby", {k: "roster", players: LB.players});
+    LB.room.emit("lobby", {k: "roster", players: LB.players, game: GAME_SEL});
     lbRender();
   } else if (m.k === "roster" && LB.role === "guest") {
     LB.players = m.players || [];
+    if (m.game === 1 || m.game === 3) GAME_SEL = m.game;
     if (LB.players.some(p => p.id === LB.myId)) clearInterval(LB.iv);
     lbRender();
   } else if (m.k === "start" && LB.role === "guest") {
@@ -2750,7 +2816,7 @@ function gateRender() {
         ? el("div", {class: "kicker"}, t2("En attente de ton ami…", "Waiting for your friend…"))
         : el("button", {class: "inv ctaBig", onclick: () => { $("gate").classList.add("hidden"); if (GAME_SEL === 2) openGame2(); else { goMenu(); setNamesVisible(false); } }}, t2("Réglages et départ", "Settings and start"), el("span", {html: svg("arrow")})));
     } else if (LB.started && LB.settings) {
-      const d = DIFFS.find(x => x.id === LB.settings.diff);
+      const d = (LB.settings.game === 3 ? G3_DIFFS : DIFFS).find(x => x.id === LB.settings.diff) || DIFFS[0];
       body.push(el("div", {class: "kicker"}, `${catLabel(LB.settings.cat)} · ${lg(d.label)} · ${LB.settings.sec} s · ${LB.settings.rounds}`));
     } else {
       const hostName = (LB.players[0] || {}).name || t2("L’hôte", "The host");
@@ -2808,6 +2874,13 @@ function g3Blank() {
   return out;
 }
 function g3ResetStage() { Object.assign($("stage").style, {position: "", left: "", top: "", transform: "", zIndex: ""}); }
+// Invités (jeu 3 en ligne) : ce qu’il faut faire à chaque changement de phase, comme le fait setPhase en local.
+function g3NetPhase(p) {
+  if (p !== "puzzle") { g3ResetStage(); $("stage").replaceChildren(cv, $("notif")); }
+  if (p === "end") { G.img = cv.toDataURL("image/png"); G.blank = g3Blank(); }
+  if (p === "puzzle" && isPuzzlerMe()) g3PuzzleStart();
+  if (p === "guess") sizeStage();
+}
 // Puzzle : les 9 morceaux recouvrent toute la zone du dessin ; on tape deux morceaux pour les échanger.
 function g3PuzzleStart() {
   G.solved = false; G.sf = 0;
@@ -2855,19 +2928,27 @@ function g3PuzzleStart() {
   setTimeout(() => board.classList.remove("enter"), 1100);
   startTimer(CFG.dur, () => { if (G && G.phase === "puzzle") g3PuzzleEnd(false); });
 }
+// En ligne, seul l’hôte fait avancer la partie : le puzzle fini est envoyé par celui qui le fait.
 function g3PuzzleEnd(ok) {
-  if (!G || G.phase !== "puzzle") return;
+  if (!G || G.phase !== "puzzle" || (netOn() && !NETG.host)) return;
   stopTimer();
   G.solved = !!ok;
   if (ok) { setPhase("guess"); return; }   // puzzle réussi : on enchaîne directement sur le mot
   SFX.g3lose();
   setPhase("puzzleEnd");                   // temps écoulé : page de transition
 }
+// Hôte : puzzle réussi par le joueur qui le faisait (sf = part de temps restante, entre 0 et 1).
+function g3SolvedNet(sf) {
+  if (!G || G.phase !== "puzzle" || !NETG || !NETG.host) return;
+  G.solved = true; G.sf = Math.max(0, Math.min(1, Number(sf) || 0));
+  G.pts[G.puzzler] += 10; G.pts[G.drawer] += 5;
+  setPhase("guess");
+}
 function g3Solved() {
   const left = Math.max(0, (timer.end - Date.now()) / 1000 / timer.total);
   stopTimer();
   G.solved = true; G.sf = left;
-  G.pts[others()[0]] += 10; G.pts[G.drawer] += 5;
+  if (!netOn()) { G.pts[G.puzzler] += 10; G.pts[G.drawer] += 5; }
   SFX.g3win(); confetti();
   // Trophée : les morceaux se rassemblent en un seul dessin entier, encadré, puis on passe au mot.
   const b = document.querySelector("#stage .g3Board");
@@ -2877,8 +2958,20 @@ function g3Solved() {
     setTimeout(() => b.classList.add("gather"), 500);
     setTimeout(() => b.classList.add("trophy"), 1100);
   }
-  setTimeout(() => { if (G && G.phase === "puzzle") g3PuzzleEnd(true); }, 2300);
+  setTimeout(() => {
+    if (!G || G.phase !== "puzzle") return;
+    if (!netOn()) g3PuzzleEnd(true);
+    else if (NETG.host) g3SolvedNet(left);
+    else netSend({k: "req", act: "solved", sf: left});
+  }, 2300);
 }
+// Qui fait le puzzle : le joueur juste après le dessinateur qui est encore là (à deux joueurs, l’autre).
+function pickPuzzler() {
+  const n = G.names.length;
+  for (let k = 1; k < n; k++) { const i = (G.drawer + k) % n; if (!isAway1(i)) return i; }
+  return -1;
+}
+const isPuzzlerMe = () => !NETG || G.puzzler === NETG.me;
 // Devinette réussie : le devineur gagne 1 point, le dessinateur 0,5, plus le bonus de rapidité.
 function g3Found(i) {
   if (!G || G.phase !== "guess" || G.found[i]) return;
@@ -2894,28 +2987,24 @@ function g3Found(i) {
 const startLocal1 = $("start").onclick;
 let startBusy1 = false;
 $("start").onclick = e => {
-  if (GAME_SEL === 3) {
-    if (LB.room) { toast(t2("Jeu 3 en ligne : prochaine étape.", "Game 3 online: next step.")); return; }
-    if (startBusy1) return;
-    startBusy1 = true;
-    countdown2(() => { startBusy1 = false; start3Local(); });
-    return;
-  }
   if (!LB.room || LB.role !== "host") {
     // Même téléphone : même décompte 3-2-1-GO que en ligne, puis la partie.
     if (startBusy1) return;
     startBusy1 = true;
-    countdown2(() => { startBusy1 = false; startLocal1(e); });
+    countdown2(() => { startBusy1 = false; if (GAME_SEL === 3) start3Local(); else startLocal1(e); });
     return;
   }
-  const d = DIFFS.find(x => x.id === CFG.diff);
+  const g3 = GAME_SEL === 3;
+  const dl = g3 ? G3_DIFFS : DIFFS;
+  const d = dl.find(x => x.id === CFG.diff) || dl.find(x => x.id === "difficile") || dl[0];
+  CFG.diff = d.id;
   const names = LB.players.map(p => p.name);
-  const settings = {cat: CFG.cat, diff: CFG.diff, rounds: ROUNDS, sec: d.sec, ids: LB.players.map(p => p.id)};
+  const settings = {game: GAME_SEL, cat: CFG.cat, diff: CFG.diff, rounds: ROUNDS, sec: d.sec, ids: LB.players.map(p => p.id)};
   try { LB.room.emit("lobby", {k: "start", settings, names}); } catch (err) {}
   NETG = {host: true, me: 0, names};
   setNamesVisible(false);
   applyNetSettings(settings);
-  G = {names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null};
+  G = {g3, names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null, img: null, solved: false, sf: 0, puzzler: -1};
   countdown2(() => { $("gate").classList.add("hidden"); showGame(); setPhase("handover"); });
 };
 
@@ -2932,10 +3021,11 @@ const netNextId = () => NETG.me + "-" + (++netSid);
 function setNamesVisible(v) { $("hWho").classList.toggle("hidden", !v); document.querySelector("#menu .names").classList.toggle("hidden", !v); }
 function applyNetSettings(st) { CFG.cat = st.cat; CFG.diff = st.diff; CFG.dur = st.sec; ROUNDS = st.rounds; }
 function netGuestStart(settings, names) {
+  if (settings.game) GAME_SEL = settings.game;
   NETG = {host: false, me: Math.max(1, settings.ids.indexOf(LB.myId)), names};
   setNamesVisible(false);
   applyNetSettings(settings);
-  G = {names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null};
+  G = {g3: GAME_SEL === 3, names, drawer: 0, round: 1, pts: names.map(() => 0), found: names.map(() => false), used: [], word: null, options: [], phase: "handover", result: null, img: null, solved: false, sf: 0, puzzler: -1};
   countdown2(() => { $("gate").classList.add("hidden"); showGame(); render(); });
 }
 function netEnd() {
@@ -2950,6 +3040,13 @@ function hostLeft1(i) {
   NETG.away = NETG.away || {};
   NETG.away[i] = true;
   try { toast(t2(`${G.names[i]} a quitté la partie.`, `${G.names[i]} left the game.`)); } catch (e) {}
+  if (G.g3 && G.phase === "handoff" && G.puzzler === i) {
+    // Celui qui devait faire le puzzle est parti : le puzzle passe au suivant.
+    G.puzzler = pickPuzzler();
+    if (G.puzzler < 0) reveal({by: "timeout"}); else render();
+    return;
+  }
+  if (G.g3 && G.phase === "puzzle" && G.puzzler === i) { g3PuzzleEnd(false); return; }
   if (G.phase === "guess") {
     if (G.drawer === i) reveal({by: "timeout"});
     else { G.found[i] = true; if (others().every(k => G.found[k])) reveal({by: "found"}); else render(); }
@@ -3012,6 +3109,8 @@ function hostReq(m) {
     }
   } else if (m.act === "try") {
     if (G.phase === "guess" && !isD) { G.tries = [...(G.tries || []), String(m.text || "").slice(0, 30)]; render(); }
+  } else if (m.act === "solved") {
+    if (G.g3 && G.phase === "puzzle" && who === G.puzzler) g3SolvedNet(m.sf);
   } else if (m.act === "next") {
     if (G.phase === "reveal") nextRound();
   }
@@ -3019,10 +3118,10 @@ function hostReq(m) {
 // Hôte : envoie l'état après chaque changement (render est appelé à chaque fois).
 function netPush() {
   if (!NETG || !NETG.host || !G) return;
-  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.found, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length, G.hint]);
+  const sig = JSON.stringify([G.phase, G.round, G.drawer, G.word, G.pts, G.found, G.result && G.result.by, G.revealN, G.reveal && G.reveal.length, (G.tries || []).length, G.hint, G.puzzler, !!G.solved]);
   if (sig === netLast) return;
   netLast = sig;
-  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, names: G.names, pts: G.pts, found: G.found, word: G.phase === "reveal" ? G.word : null, pat: G.word ? maskWord() : "", label: G.word ? countLabel() : "", hint: G.hint || null, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null}});
+  netSend({k: "state", s: {phase: G.phase, round: G.round, drawer: G.drawer, names: G.names, pts: G.pts, found: G.found, word: G.phase === "reveal" ? G.word : null, pat: G.word ? maskWord() : "", label: G.word ? countLabel() : "", hint: G.hint || null, result: G.result, reveal: G.reveal || null, revealN: G.revealN || 0, tries: G.tries || [], rem: timer.on ? Math.max(0, timer.end - Date.now()) / 1000 : null, g3: G.g3 ? {puzzler: G.puzzler, solved: !!G.solved, sf: G.sf || 0} : null}});
 }
 // Invités : applique l'état reçu puis affiche comme le jeu solo.
 function netApply(s) {
@@ -3034,9 +3133,11 @@ function netApply(s) {
   else if (s.phase === "handover") { G.word = null; G.options = []; }
   else if (s.phase === "choose") G.word = null;
   if (s.phase === "handover" || s.phase === "choose") { strokes = []; cur = null; netLive = {}; redraw(); }
+  if (s.g3) Object.assign(G, {puzzler: s.g3.puzzler, solved: s.g3.solved, sf: s.g3.sf});
   if (s.phase !== prev) {
     if (s.phase === "guess") { G.msg = null; G.hint = null; G.hintShown = false; }
     netSfx(s.phase, s.result);
+    if (G.g3) g3NetPhase(s.phase);
   }
   if (s.rem != null) startTimer(s.rem, () => {}); else stopTimer();
   if (s.phase !== prev || s.round !== prevRound) { panelSig = ""; ovSig = ""; }
@@ -3071,3 +3172,5 @@ playSplash();
 </script>
 </body>
 </html>
+
+</body></html>
