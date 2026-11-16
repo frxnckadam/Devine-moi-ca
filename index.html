@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!doctype html>
 <html lang="fr">
 <head>
@@ -3121,7 +3122,12 @@ function mkRoom(id, isHost) {
     let conn = null;
     const dispatch = (topic, data) => (handlers[topic] || []).forEach(f => { try { f(data); } catch (e) {} });
     const wire = c => c.on("data", m => { if (m && m.topic) dispatch(m.topic, m.data); });
-    const peer = isHost ? new Peer(id) : new Peer();
+    // Serveurs de relais (TURN) : sans eux, deux téléphones sur des réseaux différents (4G, box) n'arrivent souvent pas à se joindre.
+    const RTC_OPTS = {config: {iceServers: [
+      {urls: "stun:stun.l.google.com:19302"},
+      {urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject"}
+    ]}};
+    const peer = isHost ? new Peer(id, RTC_OPTS) : new Peer(undefined, RTC_OPTS);
     const room = {
       on: (topic, fn) => { (handlers[topic] = handlers[topic] || []).push(fn); },
       emit: (topic, data) => {
@@ -3624,3 +3630,5 @@ playSplash();
 </script>
 </body>
 </html>
+
+</body></html>
