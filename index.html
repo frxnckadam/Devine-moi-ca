@@ -3116,7 +3116,37 @@ async function lbConnect(code, role, name) {
 }
 // Salon en pair à pair (PeerJS, gratuit, sans compte). L'hôte a l'identifiant du salon ;
 // les invités se connectent à lui. Interface : on(sujet, fn), emit(sujet, données), leave().
+// Salon : d'abord le salon de claude.ai (capacité room, relayé par la plateforme, comme skribbl) ;
+// à défaut, PeerJS en pair à pair.
 function mkRoom(id, isHost) {
+  return claudeRoomNS().then(ns => ns ? mkRoomClaude(ns, id, isHost) : mkRoomPeer(id, isHost));
+}
+function claudeRoomNS() {
+  return new Promise(resolve => {
+    const t = setTimeout(() => resolve(null), 4000);
+    try {
+      if (!window.claude || typeof window.claude.use !== "function") { clearTimeout(t); return resolve(null); }
+      Promise.resolve(window.claude.use("room")).then(ns => { clearTimeout(t); resolve(ns || null); }, () => { clearTimeout(t); resolve(null); });
+    } catch (e) { clearTimeout(t); resolve(null); }
+  });
+}
+// Adaptateur : même interface que mkRoomPeer (on / emit / leave).
+// Chaque message porte le rôle de l'émetteur ("h" = hôte, "g" = invité) ; chacun n'écoute que l'autre côté.
+async function mkRoomClaude(ns, id, isHost) {
+  const r = await ns.join(String(id).toLowerCase());
+  const handlers = {}, unsubs = [];
+  const me = isHost ? "h" : "g", other = isHost ? "g" : "h";
+  const sub = topic => unsubs.push(r.on(topic, m => {
+    if (!m || m.isMe || !m.data || m.data.r !== other) return;
+    (handlers[topic] || []).forEach(f => { try { f(m.data.d); } catch (e) {} });
+  }, () => {}));
+  return {
+    on: (topic, fn) => { if (!handlers[topic]) { handlers[topic] = []; sub(topic); } handlers[topic].push(fn); },
+    emit: (topic, data) => { r.emit(topic, {r: me, d: data}).catch(() => {}); },
+    leave: () => { unsubs.forEach(u => { try { u(); } catch (e) {} }); try { r.leave(); } catch (e) {} }
+  };
+}
+function mkRoomPeer(id, isHost) {
   return new Promise((resolve, reject) => {
     const handlers = {}, conns = [];
     let conn = null;
