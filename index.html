@@ -3108,7 +3108,8 @@ async function lbConnect(code, role, name) {
     lbRender();
   } catch (e) {
     LB.code = null; LB.role = null; LB.room = null;
-    const why = e && (e.type || e.message) ? ` (${e.type || e.message})` : "";
+    const reason = e && (e.code || e.type || e.message);
+    const why = reason ? ` (${reason})` : "";
     lbInfo(role === "host"
       ? t2("Impossible de créer la partie en ligne. Vérifie ta connexion internet.", "Couldn't create the online game. Check your internet connection.") + why
       : t2("Connexion impossible. Vérifie le code.", "Connection failed. Check the code.") + why);
@@ -3139,12 +3140,18 @@ async function mkRoomClaude(ns, id, isHost) {
   const sub = topic => unsubs.push(r.on(topic, m => {
     if (!m || m.isMe || !m.data || m.data.r !== other) return;
     (handlers[topic] || []).forEach(f => { try { f(m.data.d); } catch (e) {} });
-  }, () => {}));
+  }, e => roomLost(e && e.code)));
   return {
     on: (topic, fn) => { if (!handlers[topic]) { handlers[topic] = []; sub(topic); } handlers[topic].push(fn); },
     emit: (topic, data) => { r.emit(topic, {r: me, d: data}).catch(() => {}); },
     leave: () => { unsubs.forEach(u => { try { u(); } catch (e) {} }); try { r.leave(); } catch (e) {} }
   };
+}
+function roomLost(code) {
+  if (!LB.code) return;
+  LB.room = null;
+  LB.status = t2("Le salon en ligne s’est coupé", "The online room closed") + ` (${code || "?"})`;
+  gateRender();
 }
 function mkRoomPeer(id, isHost) {
   return new Promise((resolve, reject) => {
@@ -3256,6 +3263,13 @@ function countdown2(then) {
   }, i * 1000));
   setTimeout(() => { d.remove(); then(); }, 4000);
 }
+function copyInvite() {
+  let url = ""; try { url = location.href; } catch (e) {}
+  const txt = t2(`Rejoins ma partie « Devine-moi ça » avec le code ${LB.code}`, `Join my “Devine-moi ça” game with code ${LB.code}`) + (url ? "\n" + url : "");
+  try { navigator.clipboard.writeText(txt); LB.status = t2("Invitation copiée.", "Invitation copied."); }
+  catch (e) { LB.status = txt; }
+  gateRender();
+}
 function gateRender() {
   const g = $("gate");
   const head = [
@@ -3291,6 +3305,7 @@ function gateRender() {
   } else {
     const names = LB.players.map(p => p.name);
     body = [el("div", {class: "kicker"}, t2("Code de la partie", "Game code")), el("div", {class: "bigCode"}, LB.code || ""),
+      ...(GATE === "host" ? [el("button", {class: "gateBtn", onclick: copyInvite}, t2("Copier l’invitation", "Copy the invitation"))] : []),
       el("div", {class: "h2"}, t2("Joueurs", "Players")),
       el("div", {class: "cats"}, ...names.map(n => el("div", {class: "crow"}, n)))];
     if (LB.last && Date.now() - LB.lastT < 3000) body.push(el("div", {class: "kicker"}, `${LB.last} ${t2("a rejoint", "joined")}`));
